@@ -1,0 +1,7 @@
+{
+  "gomi": {
+    "region": "東京都〇〇区",
+    "output_file": "gomi.json",
+    "pdf_url_override": null
+  }
+}
