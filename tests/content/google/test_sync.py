@@ -222,3 +222,75 @@ def test_apply_sync_rolls_back_insert_when_delete_fails(monkeypatch: pytest.Monk
         _apply_sync(object(), "cal-id", existing, desired)
 
     assert rollback_event_ids == ["google-new"]
+
+
+def test_apply_sync_does_not_rollback_failed_delete(monkeypatch: pytest.MonkeyPatch) -> None:
+    rollback_inserts: list[dict[str, object]] = []
+
+    def fake_upsert(_service, *, calendar_id, body, existing):
+        if existing is None:
+            rollback_inserts.append(body)
+            return "restored"
+        raise AssertionError("update は呼ばれない")
+
+    def failing_delete(_service, *, calendar_id, event_id):
+        raise CalendarSyncError("削除失敗")
+
+    monkeypatch.setattr("google_ical.content.google.sync.upsert_event", fake_upsert)
+    monkeypatch.setattr("google_ical.content.google.sync.delete_event", failing_delete)
+
+    existing = {
+        "old-event": {
+            "id": "google-old",
+            "summary": "古い予定",
+            "description": "",
+            "start": {"date": "2026-06-01"},
+            "end": {"date": "2026-06-02"},
+            "extendedProperties": {"private": {"google_ical_id": "old-event", "google_ical_source": "gomi"}},
+        },
+    }
+
+    with pytest.raises(CalendarSyncError, match="削除失敗"):
+        _apply_sync(object(), "cal-id", existing, {})
+
+    assert rollback_inserts == []
+
+
+def test_apply_sync_does_not_rollback_failed_update(monkeypatch: pytest.MonkeyPatch) -> None:
+    rollback_patches: list[dict[str, object]] = []
+
+    def fake_upsert(_service, *, calendar_id, body, existing):
+        if existing is not None:
+            raise CalendarSyncError("更新失敗")
+        raise AssertionError("insert は呼ばれない")
+
+    def fake_delete(_service, *, calendar_id, event_id):
+        raise AssertionError("delete は呼ばれない")
+
+    monkeypatch.setattr("google_ical.content.google.sync.upsert_event", fake_upsert)
+    monkeypatch.setattr("google_ical.content.google.sync.delete_event", fake_delete)
+
+    existing = {
+        "event-id": {
+            "id": "google-1",
+            "summary": "古い予定",
+            "description": "",
+            "start": {"date": "2026-06-01"},
+            "end": {"date": "2026-06-02"},
+            "extendedProperties": {"private": {"google_ical_id": "event-id", "google_ical_source": "gomi"}},
+        },
+    }
+    desired = {
+        "event-id": {
+            "summary": "新しい予定",
+            "description": "",
+            "start": {"date": "2026-06-03"},
+            "end": {"date": "2026-06-04"},
+            "extendedProperties": {"private": {"google_ical_id": "event-id", "google_ical_source": "gomi"}},
+        },
+    }
+
+    with pytest.raises(CalendarSyncError, match="更新失敗"):
+        _apply_sync(object(), "cal-id", existing, desired)
+
+    assert rollback_patches == []

@@ -29,3 +29,12 @@ def test_save_events_file_replaces_atomically(tmp_path) -> None:
     assert payload["source"] == "gomi"
     assert payload["events"][0]["summary"] == "可燃ごみ"
     assert original != path.read_text(encoding="utf-8")
+
+
+def test_save_events_file_writes_empty_events(tmp_path) -> None:
+    path = tmp_path / "gomi.json"
+
+    save_events_file(path, source="gomi", events=())
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert payload == {"source": "gomi", "events": []}

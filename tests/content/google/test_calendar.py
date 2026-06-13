@@ -26,8 +26,10 @@ class _FakeEventsResource:
         self.insert_calls: list[dict[str, object]] = []
         self.patch_calls: list[dict[str, object]] = []
         self.delete_calls: list[str] = []
+        self.list_calls: list[dict[str, object]] = []
 
     def list(self, **kwargs: object) -> _FakeListRequest:
+        self.list_calls.append(kwargs)
         request = _FakeListRequest(responses=self.responses, service=self)
         request._kwargs = kwargs
         return request
@@ -106,6 +108,16 @@ def test_list_managed_events_collects_all_google_ical_events() -> None:
     assert set(managed) == {"hash-1", "hash-2"}
     assert managed["hash-1"]["id"] == "google-1"
     assert managed["hash-2"]["id"] == "google-2"
+
+
+def test_list_managed_events_does_not_expand_recurring_instances() -> None:
+    events = _FakeEventsResource(responses=[{"items": []}])
+    service = _FakeService(events)
+
+    list_managed_events(service, calendar_id="cal-id")
+
+    assert len(events.list_calls) == 1
+    assert "singleEvents" not in events.list_calls[0]
 
 
 def test_upsert_event_inserts_when_missing() -> None:

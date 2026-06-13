@@ -57,8 +57,9 @@ cd /home/scripts/google-ical
 echo $?
 ```
 
-- **終了コード 0** が出たら OK（`config/google_token.json` が作成される）
+- **終了コード 0** が出たら OK（`config/google_token.json` が `0600` 権限で作成される）
 - ブラウザが使えないサーバーでは、手元で `auth` してできた `config/google_token.json` をサーバーへコピーしてもよい
+- サーバー上で認可コード入力を使う場合: SSH 接続時は自動でコンソールフローに切り替わる。明示するなら `.env` に `GOOGLE_ICAL_OAUTH_CONSOLE=1` を設定する
 
 
 

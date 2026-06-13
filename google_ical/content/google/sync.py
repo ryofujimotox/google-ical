@@ -18,6 +18,7 @@ from google_ical.constants import (
     JST_DATETIME_FORMAT,
     JST_TIMEZONE,
 )
+from google_ical.content.events.datetime_parse import format_jst_datetime, parse_strict_jst_datetime
 from google_ical.content.events.models import MergedEvent
 from google_ical.content.google.auth import load_calendar_credentials
 from google_ical.content.google.calendar import build_calendar_service, delete_event, list_managed_events, upsert_event
@@ -77,14 +78,15 @@ def _apply_sync(
                 google_id = upsert_event(service, calendar_id=calendar_id, body=body, existing=None)
                 applied.append(_AppliedMutation("insert", google_id, None))
             elif _needs_update(current, body):
-                applied.append(_AppliedMutation("update", str(current["id"]), _snapshot_event(current)))
+                snapshot = _snapshot_event(current)
                 upsert_event(service, calendar_id=calendar_id, body=body, existing=current)
+                applied.append(_AppliedMutation("update", str(current["id"]), snapshot))
 
         for event_id, current in existing.items():
             if event_id not in desired:
                 google_id = str(current["id"])
-                applied.append(_AppliedMutation("delete", google_id, _snapshot_event(current)))
                 delete_event(service, calendar_id=calendar_id, event_id=google_id)
+                applied.append(_AppliedMutation("delete", google_id, _snapshot_event(current)))
     except CalendarSyncError:
         _rollback_mutations(service, calendar_id, applied)
         raise
@@ -155,10 +157,10 @@ def _event_to_google_body(event: MergedEvent) -> dict[str, Any]:
 
 
 def _google_time(value: str, *, all_day: bool) -> dict[str, str]:
-    parsed = datetime.strptime(value, JST_DATETIME_FORMAT)
+    parsed = parse_strict_jst_datetime(value)
     if all_day:
         return {"date": parsed.date().isoformat()}
-    return {"dateTime": value, "timeZone": JST_TIMEZONE}
+    return {"dateTime": format_jst_datetime(parsed), "timeZone": JST_TIMEZONE}
 
 
 def _needs_update(current: dict[str, Any], desired: dict[str, Any]) -> bool:

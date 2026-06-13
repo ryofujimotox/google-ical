@@ -27,14 +27,16 @@ PDF_URL_PROMPT = """\
 PDF_TO_EVENTS_PROMPT = """\
 添付PDFからゴミ収集日を読み取り、予定JSONのevents配列だけをJSONで返してください。
 
+対象月: {target_month}（JST）
+
 出力形式:
 [
-  {
+  {{
     "summary": "可燃ごみ",
     "start": "2026-06-01T00:00:00",
     "end": "2026-06-02T00:00:00",
     "all_day": true
-  }
+  }}
 ]
 
 条件:
@@ -42,6 +44,8 @@ PDF_TO_EVENTS_PROMPT = """\
 - description は必要な場合だけ短く入れる
 - start/end は YYYY-MM-DDTHH:MM:SS のJSTとして扱う
 - ゴミ収集日は all_day: true とし、end は翌日 00:00:00 にする
+- 対象月（{target_month}）の収集日だけを返す。他の月は含めない
+- 対象月に読み取れる収集日が無い場合は空配列 [] を返す
 - 読み取れない予定は作らない
 """
 
@@ -51,18 +55,16 @@ def investigate_gomi_pdf_url(*, region: str, api_key: str, model: str) -> str:
 
     例: region="東京都〇〇区" → "https://example.jp/gomi.pdf"
     """
-    from openai import OpenAI
-
     region = region.strip()
     if not region:
         raise OpenAIClientError("region が空です")
 
-    client = OpenAI(api_key=api_key)
+    client = _create_openai_client(api_key)
     try:
         response = client.responses.create(
             model=model,
             tools=[{"type": "web_search"}],
-            tool_choice="auto",
+            tool_choice="required",
             input=PDF_URL_PROMPT.format(region=region),
         )
     except Exception as exc:
@@ -74,14 +76,18 @@ def investigate_gomi_pdf_url(*, region: str, api_key: str, model: str) -> str:
     return url
 
 
-def convert_pdf_to_events(*, pdf_bytes: bytes, api_key: str, model: str) -> tuple[CalendarEvent, ...]:
-    """PDFバイト列を渡し、ゴミ収集日の CalendarEvent タプルへ正規化する。"""
-    from openai import OpenAI
-
+def convert_pdf_to_events(
+    *,
+    pdf_bytes: bytes,
+    api_key: str,
+    model: str,
+    target_month: str,
+) -> tuple[CalendarEvent, ...]:
+    """PDFバイト列を渡し、対象月のゴミ収集日 CalendarEvent タプルへ正規化する。"""
     if not pdf_bytes:
         raise OpenAIClientError("PDF が空です")
 
-    client = OpenAI(api_key=api_key)
+    client = _create_openai_client(api_key)
     pdf_file = io.BytesIO(pdf_bytes)
     pdf_file.name = "gomi.pdf"
 
@@ -95,7 +101,7 @@ def convert_pdf_to_events(*, pdf_bytes: bytes, api_key: str, model: str) -> tupl
                 {
                     "role": "user",
                     "content": [
-                        {"type": "input_text", "text": PDF_TO_EVENTS_PROMPT},
+                        {"type": "input_text", "text": PDF_TO_EVENTS_PROMPT.format(target_month=target_month)},
                         {"type": "input_file", "file_id": uploaded_id},
                     ],
                 },
@@ -107,7 +113,14 @@ def convert_pdf_to_events(*, pdf_bytes: bytes, api_key: str, model: str) -> tupl
         if uploaded_id:
             _delete_uploaded_file(client, uploaded_id)
 
-    return normalize_gomi_events(_extract_output_text(response))
+    return normalize_gomi_events(_extract_output_text(response), target_month=target_month)
+
+
+def _create_openai_client(api_key: str) -> object:
+    """OpenAI SDK の自動リトライを無効化してクライアントを作る（AGENTS.md: リトライしない）。"""
+    from openai import OpenAI
+
+    return OpenAI(api_key=api_key, max_retries=0)
 
 
 def _extract_output_text(response: object) -> str:

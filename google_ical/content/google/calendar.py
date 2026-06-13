@@ -37,7 +37,6 @@ def list_managed_events(
     try:
         request = service.events().list(
             calendarId=calendar_id,
-            singleEvents=True,
             showDeleted=False,
         )
         while request is not None:

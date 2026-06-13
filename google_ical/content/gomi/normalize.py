@@ -3,31 +3,79 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from pydantic import ValidationError
 
-from google_ical.constants import JST_DATETIME_FORMAT
+from google_ical.constants import JST_TIMEZONE
+from google_ical.content.events.datetime_parse import parse_strict_jst_datetime
 from google_ical.content.events.models import CalendarEvent
 from google_ical.content.events.schemas import EventRecordSchema
 from google_ical.exceptions import OpenAIClientError
 
+_TARGET_MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 
-def normalize_gomi_events(output_text: str) -> tuple[CalendarEvent, ...]:
+
+def current_jst_target_month() -> str:
+    """月次バッチの対象月（JST の YYYY-MM）。"""
+    return datetime.now(ZoneInfo(JST_TIMEZONE)).strftime("%Y-%m")
+
+
+def normalize_gomi_events(output_text: str, *, target_month: str | None = None) -> tuple[CalendarEvent, ...]:
     """JSON 文字列を検証し、決定的な順序の CalendarEvent タプルを返す。
 
     例: '[{"summary":"可燃ごみ","start":"2026-06-03T00:00:00","end":"2026-06-04T00:00:00","all_day":true}]'
         → (CalendarEvent(summary="可燃ごみ", ...),)
     """
+    if target_month is not None:
+        _validate_target_month(target_month)
+
     raw = _loads_json_only(output_text)
     if isinstance(raw, dict):
         raw = raw.get("events")
-    if not isinstance(raw, list) or not raw:
+    if not isinstance(raw, list):
         raise OpenAIClientError("events[] が見つかりません")
+    if not raw:
+        return ()
 
     events = tuple(_normalize_event(item) for item in raw)
-    return tuple(sorted(events, key=lambda event: (event.start, event.end, event.summary)))
+    sorted_events = tuple(sorted(events, key=lambda event: (event.start, event.end, event.summary)))
+    deduplicated = _deduplicate_events(sorted_events)
+    if target_month is None:
+        return deduplicated
+    return _filter_events_for_target_month(deduplicated, target_month)
+
+
+def _deduplicate_events(events: tuple[CalendarEvent, ...]) -> tuple[CalendarEvent, ...]:
+    """summary/start/end が同一の重複を除く（内部 ID 衝突による同期失敗を防ぐ）。"""
+    seen: set[tuple[str, str, str]] = set()
+    unique: list[CalendarEvent] = []
+    for event in events:
+        key = (event.summary, event.start, event.end)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(event)
+    return tuple(unique)
+
+
+def _validate_target_month(target_month: str) -> None:
+    if not _TARGET_MONTH_RE.fullmatch(target_month):
+        raise OpenAIClientError(f"target_month の形式が不正です: {target_month!r}")
+
+
+def _filter_events_for_target_month(
+    events: tuple[CalendarEvent, ...],
+    target_month: str,
+) -> tuple[CalendarEvent, ...]:
+    return tuple(event for event in events if _event_start_month(event) == target_month)
+
+
+def _event_start_month(event: CalendarEvent) -> str:
+    return parse_strict_jst_datetime(event.start).strftime("%Y-%m")
 
 
 def _loads_json_only(output_text: str) -> Any:
@@ -44,23 +92,16 @@ def _normalize_event(raw: object) -> CalendarEvent:
     if not isinstance(raw, dict):
         raise OpenAIClientError("events[] の要素がオブジェクトではありません")
 
+    if raw.get("all_day") is not True:
+        raise OpenAIClientError("ゴミ収集日は all_day: true が必要です")
+
     try:
         parsed = EventRecordSchema.model_validate(raw)
     except ValidationError as exc:
-        raise OpenAIClientError("events[] の形式が不正です") from exc
+        raise OpenAIClientError(_validation_error_message(exc)) from exc
 
     if not parsed.summary.strip():
         raise OpenAIClientError("summary が空です")
-    start = _parse_datetime(parsed.start, "start")
-    end = _parse_datetime(parsed.end, "end")
-    if not parsed.all_day:
-        raise OpenAIClientError("ゴミ収集日は all_day: true が必要です")
-    if start >= end:
-        raise OpenAIClientError("end は start より後にしてください")
-    if start.time().isoformat() != "00:00:00" or end.time().isoformat() != "00:00:00":
-        raise OpenAIClientError("終日イベントの start/end は 00:00:00 にしてください")
-    if (end.date() - start.date()).days != 1:
-        raise OpenAIClientError("ゴミ収集日は 1 日分の終日イベントにしてください")
 
     return CalendarEvent(
         summary=parsed.summary.strip(),
@@ -71,8 +112,9 @@ def _normalize_event(raw: object) -> CalendarEvent:
     )
 
 
-def _parse_datetime(value: str, field_name: str) -> datetime:
-    try:
-        return datetime.strptime(value, JST_DATETIME_FORMAT)
-    except ValueError as exc:
-        raise OpenAIClientError(f"{field_name} の日時形式が不正です: {value}") from exc
+def _validation_error_message(exc: ValidationError) -> str:
+    for error in exc.errors():
+        message = error.get("msg")
+        if isinstance(message, str) and message:
+            return message.removeprefix("Value error, ")
+    return "events[] の形式が不正です"

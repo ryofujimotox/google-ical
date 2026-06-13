@@ -60,7 +60,7 @@ flowchart LR
 | `GOMI_CONFIG_PATH` | ゴミ収集日設定 JSON のパス（デフォルト: `config/gomi_config.json`）。`fetch_gomi` が読む |
 | `GOOGLE_CLIENT_ID` | Google OAuth2 クライアント ID |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth2 クライアントシークレット |
-| `OPENAI_MODEL` | 任意。省略時 `gpt-4o-mini` |
+| `OPENAI_MODEL` | 任意。省略時 `gpt-4.1-mini` |
 
 
 
@@ -187,10 +187,10 @@ flowchart LR
 
 ### ChatGPT の仕事
 
-- モデル: `gpt-4o-mini`（`OPENAI_MODEL` で上書き可）
+- モデル: `gpt-4.1-mini`（`OPENAI_MODEL` で上書き可）
 - リトライ: **しない**（失敗時は非 `0` で終了）
 - URL 調査: OpenAI Responses API + `web_search`。返却は URL 文字列のみ。
-- PDF→JSON: OpenAI Responses API + `input_file`（`gpt-4o-mini`）。出力は `gomi.json` 形式の `events[]`。
+- PDF→JSON: OpenAI Responses API + `input_file`（`gpt-4.1-mini`）。出力は `gomi.json` 形式の `events[]`。
 
 
 #### 1. ゴミ収集日 PDF URL の調査

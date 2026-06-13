@@ -24,12 +24,18 @@ def fetch_gomi_pdf_url(config: AppConfig, gomi_config: GomiConfig) -> str:
     )
 
 
-def convert_gomi_pdf(config: AppConfig, pdf_bytes: bytes) -> tuple[CalendarEvent, ...]:
+def convert_gomi_pdf(
+    config: AppConfig,
+    pdf_bytes: bytes,
+    *,
+    target_month: str,
+) -> tuple[CalendarEvent, ...]:
     return _call_openai(
         lambda: convert_pdf_to_events(
             pdf_bytes=pdf_bytes,
             api_key=config.openai_api_key,
             model=config.openai_model,
+            target_month=target_month,
         ),
     )
 

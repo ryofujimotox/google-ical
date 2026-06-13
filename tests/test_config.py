@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from google_ical.config import load_auth_config, load_config
+from google_ical.constants import DEFAULT_OPENAI_MODEL
 from google_ical.exceptions import ConfigError
 
 
@@ -91,7 +92,7 @@ def test_load_config_uses_defaults_for_optional_paths(monkeypatch: pytest.Monkey
 
     assert str(config.events_json_dir) == "config/events"
     assert str(config.gomi_config_path) == "config/gomi_config.json"
-    assert config.openai_model == "gpt-4o-mini"
+    assert config.openai_model == DEFAULT_OPENAI_MODEL
     assert config.debug is False
 
 
