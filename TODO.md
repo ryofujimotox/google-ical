@@ -5,7 +5,7 @@
 
 ## 実装
 
-- [x] Google OAuth フロー（`content/google_auth.py` の `run_oauth_flow`）
+- [x] Google OAuth フロー（`content/google/auth.py` の `run_oauth_flow`）
 - [x] ChatGPT ゴミ収集日 PDF URL 調査（`content/openai_client.py`）
 - [x] ChatGPT PDF→JSON 変換（`content/openai_client.py`）
 - [x] Google カレンダー同期（作成・更新・削除・`extendedProperties`）

@@ -350,8 +350,9 @@ flowchart LR
 | `content/gomi/pipeline.py` | `fetch_gomi` 各段処理 |
 | `content/pdf.py` | PDF HTTP 取得 |
 | `content/openai_client.py` | ChatGPT（URL 調査・PDF→JSON） |
-| `content/google_auth.py` | OAuth トークン読込・保存 |
-| `content/google_sync.py` | Google Calendar API 同期 |
+| `content/google/auth.py` | OAuth トークン読込・保存 |
+| `content/google/calendar.py` | Calendar API 薄いアダプタ |
+| `content/google/sync.py` | Google Calendar API 同期 |
 
 
 ### コメントの書き方

@@ -1,12 +1,17 @@
-"""content/google_sync.py のイベント変換テスト。"""
+"""content/google/sync.py のイベント変換テスト。"""
 
 from __future__ import annotations
 
 import pytest
 
-from google_ical.constants import JST_TIMEZONE
+from google_ical.constants import GOOGLE_ICAL_ID_KEY, GOOGLE_ICAL_SOURCE_KEY, JST_TIMEZONE
 from google_ical.content.events.models import MergedEvent
-from google_ical.content.google_sync import _build_desired_events, _event_to_google_body, _needs_update
+from google_ical.content.google.sync import (
+    _build_desired_events,
+    _event_to_google_body,
+    _managed_sources,
+    _needs_update,
+)
 from google_ical.exceptions import CalendarSyncError
 
 
@@ -26,8 +31,8 @@ def test_event_to_google_body_converts_all_day_to_google_date() -> None:
 
     assert body["start"] == {"date": "2026-06-03"}
     assert body["end"] == {"date": "2026-06-04"}
-    assert body["extendedProperties"]["private"]["google_ical_id"] == "event-id"
-    assert body["extendedProperties"]["private"]["google_ical_source"] == "gomi"
+    assert body["extendedProperties"]["private"][GOOGLE_ICAL_ID_KEY] == "event-id"
+    assert body["extendedProperties"]["private"][GOOGLE_ICAL_SOURCE_KEY] == "gomi"
 
 
 def test_event_to_google_body_converts_timed_event_to_jst_datetime() -> None:
@@ -108,6 +113,23 @@ def test_needs_update_detects_description_clear() -> None:
     current = {**desired, "description": "古い説明"}
 
     assert _needs_update(current, desired) is True
+
+
+def test_managed_sources_includes_known_sources_and_event_sources() -> None:
+    events = (
+        MergedEvent(
+            event_id="a",
+            source="custom",
+            filename="extra.json",
+            summary="予定",
+            start="2026-06-03T10:00:00",
+            end="2026-06-03T11:00:00",
+            description=None,
+            all_day=False,
+        ),
+    )
+
+    assert _managed_sources(events) == ("custom", "gomi", "manual")
 
 
 def test_build_desired_events_rejects_duplicate_internal_id() -> None:

@@ -5,8 +5,8 @@ from __future__ import annotations
 from google_ical.cli import run_command
 from google_ical.config import load_config
 from google_ical.content.events.loader import load_merged_events
-from google_ical.content.google_auth import ensure_token_file_exists
-from google_ical.content.google_sync import sync_events_to_google_calendar
+from google_ical.content.google.auth import ensure_token_file_exists
+from google_ical.content.google.sync import sync_events_to_google_calendar
 from google_ical.pipeline_log import log_info, log_stage_start, log_stage_success
 
 

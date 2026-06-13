@@ -110,9 +110,11 @@ google_ical/
   content/
     events/                # 予定 JSON（models / schemas / loader / writer）
     gomi/                  # ゴミ収集日（config / normalize / pipeline）
+    google/                # Google 連携（calendar / auth / sync）
+      calendar.py          # Calendar API 薄いアダプタ
+      auth.py              # OAuth トークン
+      sync.py              # Google カレンダー同期
     openai_client.py       # ChatGPT（URL 調査・PDF→JSON）
-    google_auth.py         # OAuth トークン
-    google_sync.py         # Google カレンダー同期
     pdf.py                 # PDF HTTP 取得
 
 config/

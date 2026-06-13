@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from google_ical.cli import run_command
 from google_ical.config import GOOGLE_TOKEN_PATH, load_config
-from google_ical.content.google_auth import run_oauth_flow
+from google_ical.content.google.auth import run_oauth_flow
 from google_ical.pipeline_log import log_info, log_stage_start, log_stage_success
 
 
