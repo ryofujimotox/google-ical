@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from google_ical.config import load_config
+from google_ical.config import load_auth_config, load_config
 from google_ical.exceptions import ConfigError
 
 
@@ -19,6 +19,25 @@ REQUIRED_ENV_NAMES = (
 def clear_required_env(monkeypatch: pytest.MonkeyPatch) -> None:
     for name in REQUIRED_ENV_NAMES:
         monkeypatch.delenv(name, raising=False)
+
+
+def test_load_auth_config_succeeds_with_google_oauth_only(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    clear_required_env(monkeypatch)
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "client-id")
+    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "client-secret")
+
+    config = load_auth_config(tmp_path / ".env")
+
+    assert config.google_client_id == "client-id"
+    assert config.google_client_secret == "client-secret"
+
+
+def test_load_auth_config_fails_when_google_client_id_missing(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    clear_required_env(monkeypatch)
+    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "client-secret")
+
+    with pytest.raises(ConfigError, match="GOOGLE_CLIENT_ID が未設定"):
+        load_auth_config(tmp_path / ".env")
 
 
 def test_load_config_fails_when_openai_api_key_missing(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:

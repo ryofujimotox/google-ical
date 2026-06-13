@@ -134,7 +134,7 @@ def _is_valid_pdf_url_only(value: str) -> bool:
     if not _URL_ONLY_RE.fullmatch(value):
         return False
     parsed = urlparse(value)
-    return parsed.scheme in {"http", "https"} and bool(parsed.netloc) and parsed.path.lower().endswith(".pdf")
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
 
 
 def _uploaded_file_id(uploaded: object) -> str:

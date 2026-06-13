@@ -21,15 +21,14 @@ class _FakeListRequest:
 
 
 class _FakeEventsResource:
-    def __init__(self, *, responses_by_source: dict[str, list[dict[str, object]]]) -> None:
-        self.responses_by_source = responses_by_source
+    def __init__(self, *, responses: list[dict[str, object]]) -> None:
+        self.responses = responses
         self.insert_calls: list[dict[str, object]] = []
-        self.update_calls: list[dict[str, object]] = []
+        self.patch_calls: list[dict[str, object]] = []
         self.delete_calls: list[str] = []
 
     def list(self, **kwargs: object) -> _FakeListRequest:
-        source = _source_from_filter(kwargs.get("privateExtendedProperty"))
-        request = _FakeListRequest(responses=self.responses_by_source.get(source, [{"items": []}]), service=self)
+        request = _FakeListRequest(responses=self.responses, service=self)
         request._kwargs = kwargs
         return request
 
@@ -43,8 +42,8 @@ class _FakeEventsResource:
         self.insert_calls.append(kwargs)
         return _FakeMutationRequest({"id": "new-google-id"})
 
-    def update(self, **kwargs: object) -> "_FakeMutationRequest":
-        self.update_calls.append(kwargs)
+    def patch(self, **kwargs: object) -> "_FakeMutationRequest":
+        self.patch_calls.append(kwargs)
         return _FakeMutationRequest({"id": kwargs["eventId"]})
 
     def delete(self, **kwargs: object) -> "_FakeMutationRequest":
@@ -68,67 +67,49 @@ class _FakeService:
         return self._events
 
 
-def _source_from_filter(value: object) -> str:
-    assert isinstance(value, str)
-    return value.split("=", 1)[1]
-
-
-def test_list_managed_events_filters_by_private_extended_property() -> None:
+def test_list_managed_events_collects_all_google_ical_events() -> None:
     service = _FakeService(
         _FakeEventsResource(
-            responses_by_source={
-                "gomi": [
-                    {
-                        "items": [
-                            {
-                                "id": "google-1",
-                                "extendedProperties": {
-                                    "private": {
-                                        "google_ical_id": "hash-1",
-                                        "google_ical_source": "gomi",
-                                    },
+            responses=[
+                {
+                    "items": [
+                        {
+                            "id": "google-1",
+                            "extendedProperties": {
+                                "private": {
+                                    "google_ical_id": "hash-1",
+                                    "google_ical_source": "gomi",
                                 },
                             },
-                            {
-                                "id": "google-2",
-                                "extendedProperties": {
-                                    "private": {
-                                        "google_ical_id": "hash-2",
-                                        "google_ical_source": "manual",
-                                    },
+                        },
+                        {
+                            "id": "google-2",
+                            "extendedProperties": {
+                                "private": {
+                                    "google_ical_id": "hash-2",
+                                    "google_ical_source": "custom",
                                 },
                             },
-                        ],
-                    },
-                ],
-                "manual": [
-                    {
-                        "items": [
-                            {
-                                "id": "google-3",
-                                "extendedProperties": {
-                                    "private": {
-                                        "google_ical_id": "hash-3",
-                                        "google_ical_source": "manual",
-                                    },
-                                },
-                            },
-                        ],
-                    },
-                ],
-            },
+                        },
+                        {
+                            "id": "google-ignored",
+                            "summary": "手動予定",
+                        },
+                    ],
+                },
+            ],
         ),
     )
 
-    managed = list_managed_events(service, calendar_id="cal-id", sources=("gomi", "manual"))
+    managed = list_managed_events(service, calendar_id="cal-id")
 
-    assert set(managed) == {"hash-1", "hash-3"}
+    assert set(managed) == {"hash-1", "hash-2"}
     assert managed["hash-1"]["id"] == "google-1"
-    assert managed["hash-3"]["id"] == "google-3"
+    assert managed["hash-2"]["id"] == "google-2"
 
 
 def test_upsert_event_inserts_when_missing() -> None:
-    events = _FakeEventsResource(responses_by_source={})
+    events = _FakeEventsResource(responses=[])
     service = _FakeService(events)
 
     google_id = upsert_event(
@@ -140,11 +121,11 @@ def test_upsert_event_inserts_when_missing() -> None:
 
     assert google_id == "new-google-id"
     assert len(events.insert_calls) == 1
-    assert events.update_calls == []
+    assert events.patch_calls == []
 
 
-def test_upsert_event_updates_when_existing() -> None:
-    events = _FakeEventsResource(responses_by_source={})
+def test_upsert_event_patches_when_existing() -> None:
+    events = _FakeEventsResource(responses=[])
     service = _FakeService(events)
 
     google_id = upsert_event(
@@ -155,5 +136,5 @@ def test_upsert_event_updates_when_existing() -> None:
     )
 
     assert google_id == "google-1"
-    assert len(events.update_calls) == 1
+    assert len(events.patch_calls) == 1
     assert events.insert_calls == []

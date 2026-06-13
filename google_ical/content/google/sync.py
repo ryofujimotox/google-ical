@@ -6,13 +6,13 @@ extendedProperties.private に google_ical_id / google_ical_source を保存し�
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
+from zoneinfo import ZoneInfo
 
 from google_ical.config import AppConfig
 from google_ical.constants import (
-    DEFAULT_EVENT_SOURCE,
-    GOMI_EVENT_SOURCE,
     GOOGLE_ICAL_ID_KEY,
     GOOGLE_ICAL_SOURCE_KEY,
     JST_DATETIME_FORMAT,
@@ -23,6 +23,17 @@ from google_ical.content.google.auth import load_calendar_credentials
 from google_ical.content.google.calendar import build_calendar_service, delete_event, list_managed_events, upsert_event
 from google_ical.exceptions import CalendarSyncError, GoogleAuthError
 
+_JST = ZoneInfo(JST_TIMEZONE)
+
+
+@dataclass(frozen=True)
+class _AppliedMutation:
+    """同期失敗時に元へ戻すため、成功した API 変更を記録する。"""
+
+    kind: Literal["insert", "update", "delete"]
+    google_event_id: str
+    rollback_body: dict[str, Any] | None
+
 
 def sync_events_to_google_calendar(
     config: AppConfig,
@@ -32,8 +43,7 @@ def sync_events_to_google_calendar(
     calendar_id = config.google_calendar_id
     try:
         service = build_calendar_service(load_calendar_credentials())
-        sources = _managed_sources(events)
-        existing = list_managed_events(service, calendar_id=calendar_id, sources=sources)
+        existing = list_managed_events(service, calendar_id=calendar_id)
         desired = _build_desired_events(events)
         _apply_sync(service, calendar_id, existing, desired)
     except (CalendarSyncError, GoogleAuthError):
@@ -42,13 +52,6 @@ def sync_events_to_google_calendar(
         raise CalendarSyncError(
             f"Google カレンダー同期に失敗しました calendar_id={calendar_id}",
         ) from exc
-
-
-def _managed_sources(events: tuple[MergedEvent, ...]) -> tuple[str, ...]:
-    """削除漏れを防ぐため、既知 source と今回 JSON の source を和集合にする。"""
-    sources = {DEFAULT_EVENT_SOURCE, GOMI_EVENT_SOURCE}
-    sources.update(event.source for event in events)
-    return tuple(sorted(sources))
 
 
 def _build_desired_events(events: tuple[MergedEvent, ...]) -> dict[str, dict[str, Any]]:
@@ -66,14 +69,73 @@ def _apply_sync(
     existing: dict[str, dict[str, Any]],
     desired: dict[str, dict[str, Any]],
 ) -> None:
-    for event_id, body in desired.items():
-        current = existing.get(event_id)
-        if current is None or _needs_update(current, body):
-            upsert_event(service, calendar_id=calendar_id, body=body, existing=current)
+    applied: list[_AppliedMutation] = []
+    try:
+        for event_id, body in desired.items():
+            current = existing.get(event_id)
+            if current is None:
+                google_id = upsert_event(service, calendar_id=calendar_id, body=body, existing=None)
+                applied.append(_AppliedMutation("insert", google_id, None))
+            elif _needs_update(current, body):
+                applied.append(_AppliedMutation("update", str(current["id"]), _snapshot_event(current)))
+                upsert_event(service, calendar_id=calendar_id, body=body, existing=current)
 
-    for event_id, current in existing.items():
-        if event_id not in desired:
-            delete_event(service, calendar_id=calendar_id, event_id=current["id"])
+        for event_id, current in existing.items():
+            if event_id not in desired:
+                google_id = str(current["id"])
+                applied.append(_AppliedMutation("delete", google_id, _snapshot_event(current)))
+                delete_event(service, calendar_id=calendar_id, event_id=google_id)
+    except CalendarSyncError:
+        _rollback_mutations(service, calendar_id, applied)
+        raise
+
+
+def _rollback_mutations(
+    service: object,
+    calendar_id: str,
+    applied: list[_AppliedMutation],
+) -> None:
+    """途中失敗時に、成功済みの insert / update / delete を逆順で取り消す。"""
+    errors: list[str] = []
+    for mutation in reversed(applied):
+        try:
+            if mutation.kind == "insert":
+                delete_event(service, calendar_id=calendar_id, event_id=mutation.google_event_id)
+            elif mutation.kind == "update":
+                if mutation.rollback_body is None:
+                    continue
+                upsert_event(
+                    service,
+                    calendar_id=calendar_id,
+                    body=mutation.rollback_body,
+                    existing={"id": mutation.google_event_id},
+                )
+            elif mutation.kind == "delete":
+                if mutation.rollback_body is None:
+                    continue
+                upsert_event(
+                    service,
+                    calendar_id=calendar_id,
+                    body=mutation.rollback_body,
+                    existing=None,
+                )
+        except CalendarSyncError as exc:
+            errors.append(str(exc))
+    if errors:
+        raise CalendarSyncError(
+            "Google カレンダーのロールバックに失敗しました: " + "; ".join(errors),
+        )
+
+
+def _snapshot_event(event: dict[str, Any]) -> dict[str, Any]:
+    """update / delete のロールバック用に、Google イベントの主要フィールドだけ残す。"""
+    return {
+        "summary": event.get("summary"),
+        "description": event.get("description", ""),
+        "start": event.get("start"),
+        "end": event.get("end"),
+        "extendedProperties": event.get("extendedProperties"),
+    }
 
 
 def _event_to_google_body(event: MergedEvent) -> dict[str, Any]:
@@ -104,14 +166,36 @@ def _needs_update(current: dict[str, Any], desired: dict[str, Any]) -> bool:
         return True
     if _text_value(current.get("description")) != _text_value(desired.get("description")):
         return True
-    if current.get("start") != desired.get("start"):
+    if not _google_times_equal(current.get("start"), desired.get("start")):
         return True
-    if current.get("end") != desired.get("end"):
+    if not _google_times_equal(current.get("end"), desired.get("end")):
         return True
 
     current_private = current.get("extendedProperties", {}).get("private", {})
     desired_private = desired.get("extendedProperties", {}).get("private", {})
     return any(current_private.get(key) != value for key, value in desired_private.items())
+
+
+def _google_times_equal(left: object, right: object) -> bool:
+    if not isinstance(left, dict) or not isinstance(right, dict):
+        return left == right
+    return _normalize_google_time(left) == _normalize_google_time(right)
+
+
+def _normalize_google_time(value: dict[str, Any]) -> tuple[str, str]:
+    """Google 返却と desired body を JST 基準の比較キーにそろえる。"""
+    if "date" in value:
+        return (str(value["date"]), "")
+    dt_raw = str(value.get("dateTime", ""))
+    if not dt_raw:
+        return ("", "")
+    normalized = dt_raw.replace("Z", "+00:00")
+    parsed = datetime.fromisoformat(normalized)
+    if parsed.tzinfo is None:
+        tz_name = str(value.get("timeZone") or JST_TIMEZONE)
+        parsed = parsed.replace(tzinfo=ZoneInfo(tz_name))
+    jst = parsed.astimezone(_JST)
+    return (jst.strftime(JST_DATETIME_FORMAT), JST_TIMEZONE)
 
 
 def _text_value(value: object) -> str:
