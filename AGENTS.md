@@ -201,6 +201,8 @@ flowchart LR
 | 出力 | ゴミ収集日 PDF の **URL のみ**（1 文字列。JSON オブジェクトではない） |
 | 意図 | 自治体の公式ゴミ収集日 PDF へのリンクを特定する |
 | 幻覚対策 | プロンプトで公式ドメインを優先する。URL は段 2 で HTTP 応答を検証する |
+| プロンプト | 自治体公式ドメインを最優先し、PDF ファイル URL を 1 つ返す。返答は URL 文字列のみ（説明・Markdown・引用・JSON・余分な空白は出力しない）。正本: `google_ical/content/openai_client.py` の `PDF_URL_PROMPT` |
+| 応答検証 | プログラム側で URL 1 文字列・`http`/`https`・パスが `.pdf` 終端かを検証する |
 
 
 #### 2. PDF の JSON 変換
@@ -211,6 +213,7 @@ flowchart LR
 | 出力 | `config/events/gomi.json` テンプレートと同じ `events[]` 形式 |
 | 意図 | PDF からその月のゴミ収集日を読み取り、日付ごとのイベントにする |
 | PDF 処理 | 一般的な自治体 PDF を想定。サイズ上限・事前テキスト化の特別扱いはしない |
+| プロンプト | 添付 PDF からゴミ収集日を読み取り、`events[]` 相当の JSON 配列のみ返す。`all_day: true`、`end` は翌日 0:00、読み取れない予定は作らない。正本: `google_ical/content/openai_client.py` の `PDF_TO_EVENTS_PROMPT` |
 
 - **中間スキーマは設けない**。ChatGPT の返却をそのまま予定 JSON に近い形で受け取る
 - `summary` は **単純な文字列**（例: `可燃ごみ`、`不燃ごみ`）。種別の固定一覧は設けない
@@ -301,19 +304,6 @@ flowchart LR
 - テスト関数は対象関数ごとに分ける（1 テスト関数 = 1 関数の 1 観点）
 - ゴミ収集日正規化は同一入力で同一イベント集合になることを保証する
 - **Google Calendar API・ChatGPT API・実 PDF 取得は単体テスト対象外** とし、必要な確認は結合テストで行う
-
-
-
-## 未決定事項
-
-実装前に決める項目。決まり次第、本節から該当セクションへ移す。
-
-
-### ChatGPT
-
-- [ ] コスト上限
-- [ ] URL 調査のプロンプト（返却は URL 文字列のみ）
-- [ ] PDF→JSON のプロンプト
 
 
 

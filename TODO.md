@@ -15,5 +15,5 @@
 
 ## ドキュメント
 
-- [ ] ChatGPT プロンプト確定後、AGENTS.md の未決定事項を移す
-- [ ] GitHub リポジトリ作成・`origin` への初回 push
+- [x] AGENTS.md の未決定事項を移す（ChatGPT プロンプトは `openai_client.py` に実装済み）
+- [x] GitHub リポジトリ作成・`origin` への初回 push

@@ -62,3 +62,25 @@
 **この表以外の絵文字は使わない。**
 
 
+### レビュー指摘対応のコミット
+
+PR レビュー（Codex 含む）への対応コミットは、**件名に PR 番号**、**本文にリンク付きの詳細**を書く。
+
+- 件名: `{emoji} {Type}: {要約}（PR #N）`
+- 本文: どの指摘への対応かを、レビュー・コメントへの **完全 URL** とともに書く
+- review ID（例: `4490815424`）は PR 番号ではない。`#4490815424` のような省略リンクは使わない
+- リンク形式: `https://github.com/{owner}/{repo}/pull/N#pullrequestreview-{id}` または `#discussion_r{id}`
+
+例:
+
+```text
+🐛 Fix: PDF URL検証でランディングページURLを拒否（PR #3）
+
+P2「Enforce the .pdf path requirement」対応。
+/garbage-calendar 等の非PDFランディングページURLを段1で拒否する。
+
+- レビュー: https://github.com/ryofujimotox/google-ical/pull/3#pullrequestreview-4490815424
+- コメント: https://github.com/ryofujimotox/google-ical/pull/3#discussion_r3407350727
+```
+
+
