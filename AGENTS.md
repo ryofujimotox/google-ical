@@ -346,6 +346,7 @@ flowchart LR
 | `content/events/loader.py` | 予定 JSON ディレクトリ読込・合成 |
 | `content/events/writer.py` | 予定 JSON ファイル書き出し |
 | `content/gomi/config.py` | ゴミ収集日設定 JSON 読込 |
+| `content/gomi/normalize.py` | ChatGPT 返却 events[] のゴミ収集日正規化 |
 | `content/gomi/pipeline.py` | `fetch_gomi` 各段処理 |
 | `content/pdf.py` | PDF HTTP 取得 |
 | `content/openai_client.py` | ChatGPT（URL 調査・PDF→JSON） |

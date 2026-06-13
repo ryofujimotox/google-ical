@@ -109,7 +109,7 @@ google_ical/
   commands/                # 実行可能コマンド（auth / fetch_gomi / sync_calendar）
   content/
     events/                # 予定 JSON（models / schemas / loader / writer）
-    gomi/                  # ゴミ収集日（config / pipeline）
+    gomi/                  # ゴミ収集日（config / normalize / pipeline）
     openai_client.py       # ChatGPT（URL 調査・PDF→JSON）
     google_auth.py         # OAuth トークン
     google_sync.py         # Google カレンダー同期

@@ -10,3 +10,5 @@ GOOGLE_TOKEN_PATH = Path("config/google_token.json")
 DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
 DEFAULT_EVENT_SOURCE = "manual"
 DEFAULT_GOMI_OUTPUT = "gomi.json"
+JST_TIMEZONE = "Asia/Tokyo"
+JST_DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
