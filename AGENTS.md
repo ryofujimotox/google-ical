@@ -202,7 +202,7 @@ flowchart LR
 | 意図 | 自治体の公式ゴミ収集日 PDF へのリンクを特定する |
 | 幻覚対策 | プロンプトで公式ドメインを優先する。URL は段 2 で HTTP 応答を検証する |
 | プロンプト | 自治体公式ドメインを最優先し、PDF ファイル URL を 1 つ返す。返答は URL 文字列のみ（説明・Markdown・引用・JSON・余分な空白は出力しない）。正本: `google_ical/content/openai_client.py` の `PDF_URL_PROMPT` |
-| 応答検証 | プログラム側で URL 1 文字列・`http`/`https`・パスが `.pdf` 終端かを検証する |
+| 応答検証 | プログラム側で URL 1 文字列・`http`/`https` を検証する。パスが `.pdf` 終端、または CMS のダウンロード URL（`/download` 等）のみ受理し、ランディングページ URL は段 1 で拒否する。PDF 本体かどうかは段 2 で Content-Type を検証する |
 
 
 #### 2. PDF の JSON 変換

@@ -134,7 +134,18 @@ def _is_valid_pdf_url_only(value: str) -> bool:
     if not _URL_ONLY_RE.fullmatch(value):
         return False
     parsed = urlparse(value)
-    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return False
+    path = parsed.path.lower()
+    if path.endswith(".pdf"):
+        return True
+    return _looks_like_pdf_download_url(parsed)
+
+
+def _looks_like_pdf_download_url(parsed: object) -> bool:
+    """CMS のダウンロード URL を許容する（PDF かどうかは取得段で検証）。"""
+    path = str(getattr(parsed, "path", "")).lower()
+    return any(marker in path for marker in ("/download", "/file", "/dl"))
 
 
 def _uploaded_file_id(uploaded: object) -> str:

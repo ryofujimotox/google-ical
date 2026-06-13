@@ -17,6 +17,10 @@ def test_is_valid_pdf_url_only_accepts_download_endpoint_without_pdf_suffix() ->
     assert _is_valid_pdf_url_only("https://example.jp/download?id=123") is True
 
 
+def test_is_valid_pdf_url_only_rejects_landing_page_without_pdf() -> None:
+    assert _is_valid_pdf_url_only("https://city.example.jp/garbage-calendar") is False
+
+
 def test_is_valid_pdf_url_only_rejects_extra_text() -> None:
     assert _is_valid_pdf_url_only("URL: https://example.jp/calendar/gomi.pdf") is False
 
