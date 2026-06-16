@@ -8,86 +8,138 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from google_ical.constants import (
-    DEFAULT_OPENAI_MODEL,
-    EVENTS_JSON_DIR,
-    GOMI_CONFIG_PATH,
-    GOOGLE_TOKEN_PATH,
-)
 from google_ical.exceptions import ConfigError
 
-__all__ = ["AppConfig", "AuthConfig", "ConfigError", "GOOGLE_TOKEN_PATH", "load_auth_config", "load_config"]
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+
+# env 不要の固定値（変更時はここを編集）
+JSON_SOURCE_DIR = _REPO_ROOT / "config" / "json_sources"        # JSON 変換用ソース（PDF 等）の置き場。fetch_gomi が取得 PDF を保存
+JSON_SOURCE_GOMI = "gomi.pdf"                                   # JSON 変換用ソースのゴミ収集日 PDF 名。fetch_gomi が保存
+ICAL_JSONS_DIR = _REPO_ROOT / "config" / "ical_jsons"           # iCal 取り込み用 JSON の置き場。sync_calendar が *.json を読む
+ICAL_JSONS_GOMI = "gomi.json"                                   # fetch_gomi が PDF（JSON_SOURCE_GOMI）を JSON 化して書き出すファイル名
+GOOGLE_TOKEN_PATH = _REPO_ROOT / "config" / "google_token.json" # OAuth トークンの保存先。auth が認可後に書き出す
+GOOGLE_ICAL_ID_KEY = "google_ical_id"                           # ical JSON と Google イベントの対応付け用キー名。sync_calendar が付与
+GOOGLE_ICAL_SOURCE_KEY = "google_ical_source"                   # 本リポ管理イベントの識別・削除判定用キー名。sync_calendar が付与
+TIMEZONE = "Asia/Tokyo"                                         # JST
+DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S"                           # ical JSON の日時文字列形式
+
+__all__ = [
+    "AppConfig",
+    "ConfigError",
+    "DATETIME_FORMAT",
+    "JSON_SOURCE_DIR",
+    "JSON_SOURCE_GOMI",
+    "ICAL_JSONS_DIR",
+    "ICAL_JSONS_GOMI",
+    "GOOGLE_ICAL_ID_KEY",
+    "GOOGLE_ICAL_SOURCE_KEY",
+    "GOOGLE_TOKEN_PATH",
+    "TIMEZONE",
+    "app_config",
+    "check_auth_config",
+    "check_fetch_gomi_config",
+    "check_sync_calendar_config",
+    "install_app_config",
+]
+
+_loaded_app_config: AppConfig | None = None
 
 
-@dataclass(frozen=True)
-class AuthConfig:
-    """Google OAuth 認可コマンド用の設定値。"""
+class _AppConfigAccess:
+    """各 check_*_config() / install_app_config() 後に app_config.xxx で参照する。"""
 
-    google_client_id: str
-    google_client_secret: str
+    def __getattr__(self, name: str):
+        if _loaded_app_config is None:
+            raise ConfigError("設定が読み込まれていません。check_*_config() を先に実行してください。")
+        return getattr(_loaded_app_config, name)
+
+
+app_config = _AppConfigAccess()
 
 
 @dataclass(frozen=True)
 class AppConfig:
-    """アプリ全体で使う設定値。"""
+    """アプリ共通の設定値（check_*_config でコマンドごとに必須 env を検証する）。"""
 
-    openai_api_key: str
-    google_calendar_id: str
-    events_json_dir: Path
-    gomi_config_path: Path
     google_client_id: str
     google_client_secret: str
+    google_calendar_id: str
+    google_token_path: Path
+    openai_api_key: str
     openai_model: str
-    debug: bool = False
+    gomi_region: str | None
+    gomi_pdf_url_override: str | None
+    json_source_dir: Path
+    json_source_gomi: Path
+    ical_jsons_dir: Path
+    ical_jsons_gomi: Path
 
 
-def load_auth_config(env_file: str | Path | None = None) -> AuthConfig:
-    """`.env` から Google OAuth 認可に必要な設定だけを読む。"""
+def install_app_config(config: AppConfig) -> None:
+    """読み込み済み設定をモジュールへ反映する（テスト用）。"""
+    global _loaded_app_config
+    _loaded_app_config = config
+
+
+def check_auth_config(env_file: str | Path | None = None) -> None:
+    """auth 用の必須 env を検証し、app_config へ反映する。
+    必須: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+    """
     load_dotenv(dotenv_path=env_file)
-
-    google_client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip()
-    google_client_secret = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
-
-    if not google_client_id:
-        raise ConfigError("環境変数 GOOGLE_CLIENT_ID が未設定です。")
-    if not google_client_secret:
-        raise ConfigError("環境変数 GOOGLE_CLIENT_SECRET が未設定です。")
-
-    return AuthConfig(
-        google_client_id=google_client_id,
-        google_client_secret=google_client_secret,
-    )
+    _require_env("GOOGLE_CLIENT_ID")
+    _require_env("GOOGLE_CLIENT_SECRET")
+    install_app_config(_build_app_config())
 
 
-def load_config(env_file: str | Path | None = None) -> AppConfig:
-    """`.env` を読み込み、必須環境変数を検証した設定を返す。"""
+def check_fetch_gomi_config(env_file: str | Path | None = None) -> None:
+    """fetch_gomi 用の必須 env を検証し、app_config へ反映する。
+    必須: OPENAI_API_KEY, OPENAI_MODEL。GOMI_REGION は GOMI_PDF_URL_OVERRIDE 未設定時のみ。
+    """
     load_dotenv(dotenv_path=env_file)
+    _require_env("OPENAI_API_KEY")
+    _require_env("OPENAI_MODEL")
+    if not _read_env("GOMI_PDF_URL_OVERRIDE"):
+        _require_env("GOMI_REGION")
+    install_app_config(_build_app_config())
 
-    openai_api_key = os.getenv("OPENAI_API_KEY", "").strip()
-    google_calendar_id = os.getenv("GOOGLE_CALENDAR_ID", "").strip()
-    auth = load_auth_config(env_file=None)
 
-    if not openai_api_key:
-        raise ConfigError("環境変数 OPENAI_API_KEY が未設定です。")
-    if not google_calendar_id:
-        raise ConfigError("環境変数 GOOGLE_CALENDAR_ID が未設定です。")
+def check_sync_calendar_config(env_file: str | Path | None = None) -> None:
+    """sync_calendar 用の必須 env を検証し、app_config へ反映する。
+    必須: GOOGLE_CALENDAR_ID, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+    """
+    load_dotenv(dotenv_path=env_file)
+    _require_env("GOOGLE_CALENDAR_ID")
+    _require_env("GOOGLE_CLIENT_ID")
+    _require_env("GOOGLE_CLIENT_SECRET")
+    install_app_config(_build_app_config())
 
-    events_json_dir = Path(os.getenv("EVENTS_JSON_DIR", "").strip() or str(EVENTS_JSON_DIR))
-    gomi_config_path = Path(os.getenv("GOMI_CONFIG_PATH", "").strip() or str(GOMI_CONFIG_PATH))
-    openai_model = os.getenv("OPENAI_MODEL", "").strip() or DEFAULT_OPENAI_MODEL
 
+def _build_app_config() -> AppConfig:
+    """現在の環境変数と固定値から AppConfig を組み立てる（検証はしない）。"""
+    gomi_pdf_url_override = _read_env("GOMI_PDF_URL_OVERRIDE") or None
+    gomi_region = _read_env("GOMI_REGION") or None
     return AppConfig(
-        openai_api_key=openai_api_key,
-        google_calendar_id=google_calendar_id,
-        events_json_dir=events_json_dir,
-        gomi_config_path=gomi_config_path,
-        google_client_id=auth.google_client_id,
-        google_client_secret=auth.google_client_secret,
-        openai_model=openai_model,
-        debug=_env_flag_enabled("GOOGLE_ICAL_DEBUG"),
+        google_client_id=_read_env("GOOGLE_CLIENT_ID"),
+        google_client_secret=_read_env("GOOGLE_CLIENT_SECRET"),
+        google_calendar_id=_read_env("GOOGLE_CALENDAR_ID"),
+        google_token_path=GOOGLE_TOKEN_PATH,
+        openai_api_key=_read_env("OPENAI_API_KEY"),
+        openai_model=_read_env("OPENAI_MODEL"),
+        gomi_region=gomi_region,
+        gomi_pdf_url_override=gomi_pdf_url_override,
+        json_source_dir=JSON_SOURCE_DIR,
+        json_source_gomi=JSON_SOURCE_DIR / JSON_SOURCE_GOMI,
+        ical_jsons_dir=ICAL_JSONS_DIR,
+        ical_jsons_gomi=ICAL_JSONS_DIR / ICAL_JSONS_GOMI,
     )
 
 
-def _env_flag_enabled(name: str) -> bool:
-    value = os.getenv(name, "").strip().lower()
-    return value in {"1", "true", "yes", "on"}
+def _read_env(name: str) -> str:
+    return os.getenv(name, "").strip()
+
+
+def _require_env(name: str) -> str:
+    value = _read_env(name)
+    if not value:
+        raise ConfigError(f"環境変数 {name} が未設定です。")
+    return value

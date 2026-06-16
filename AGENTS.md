@@ -51,16 +51,36 @@ flowchart LR
 - `.env.example` をコピーして `.env` を作成する（`.env` は **Git に含めない**）
 - **読み込み**: **`python-dotenv`** を利用して `.env` を読む
 - **値だけ**書き換える（変数名は `.env.example` のまま）
+- パス・タイムゾーン等の**ほぼ固定値**は環境変数にしない。`google_ical/config.py` を編集する
 
-| 変数 | 入れる値 |
-|------|----------|
-| `OPENAI_API_KEY` | OpenAI API キー（ChatGPT 呼び出し用） |
-| `GOOGLE_CALENDAR_ID` | 書き込み先 Google カレンダー ID（本リポ用に 1 カレンダー用意） |
-| `EVENTS_JSON_DIR` | 予定 JSON を置くディレクトリ（デフォルト: `config/events/`）。`sync_calendar` はここにある `*.json` をすべて読む |
-| `GOMI_CONFIG_PATH` | ゴミ収集日設定 JSON のパス（デフォルト: `config/gomi_config.json`）。`fetch_gomi` が読む |
-| `GOOGLE_CLIENT_ID` | Google OAuth2 クライアント ID |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth2 クライアントシークレット |
-| `OPENAI_MODEL` | 任意。省略時 `gpt-4.1-mini` |
+
+### `.env` の変数（正本: `.env.example`）
+
+コマンドごとに読む変数が異なる。未使用の変数は未設定でもよい。
+
+| 変数 | 必須 | 使うコマンド | 内容 |
+|------|------|--------------|------|
+| `GOOGLE_CLIENT_ID` | `auth` / `sync_calendar` | 同上 | Google OAuth2 クライアント ID |
+| `GOOGLE_CLIENT_SECRET` | `auth` / `sync_calendar` | 同上 | 上記 OAuth クライアントのシークレット |
+| `GOOGLE_ICAL_OAUTH_CONSOLE` | 任意 | `auth` | `1` 等で認可コード入力フロー。SSH 時は未設定でも自動切替することが多い |
+| `GOOGLE_CALENDAR_ID` | `sync_calendar` | 同上 | 書き込み先 Google カレンダー ID（Calendar API 用。iCal 公開 URL ではない） |
+| `GOMI_PDF_URL_OVERRIDE` | 任意 | `fetch_gomi` | 指定時は URL 探索をスキップし、この PDF URL から取得 |
+| `GOMI_REGION` | `fetch_gomi`（`GOMI_PDF_URL_OVERRIDE` 未指定時のみ） | 同上 | 自治体名 1 件（例: `東京都〇〇区`）。PDF URL 探索に渡す |
+| `OPENAI_API_KEY` | `fetch_gomi` | 同上 | OpenAI API キー |
+| `OPENAI_MODEL` | `fetch_gomi` | 同上 | ChatGPT モデル名（`.env.example` は `gpt-4.1-mini`） |
+
+
+### `config.py` の固定値（変更時はソースを編集）
+
+| 定数 | 内容 |
+|------|------|
+| `JSON_SOURCE_DIR` | JSON 変換用ソース（PDF 等）の置き場 |
+| `JSON_SOURCE_GOMI` | JSON 変換用ソースのゴミ収集日 PDF 名（`gomi.pdf`） |
+| `ICAL_JSONS_DIR` | iCal 取り込み用 JSON ディレクトリ（`sync_calendar` が `*.json` を読む） |
+| `ICAL_JSONS_GOMI` | ゴミ収集日の出力ファイル名（`gomi.json`） |
+| `GOOGLE_TOKEN_PATH` | OAuth トークン（`config/google_token.json`） |
+| `GOOGLE_ICAL_ID_KEY` / `GOOGLE_ICAL_SOURCE_KEY` | Calendar API の `extendedProperties.private` キー名 |
+| `TIMEZONE` / `DATETIME_FORMAT` | ical JSON のタイムゾーン・日時形式 |
 
 
 
@@ -78,7 +98,7 @@ flowchart LR
 
 | 段 | 内容 |
 |----|------|
-| 1. 設定読込 | `.env` から `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` を読む |
+| 1. 設定読込 | `check_auth_config()` で必須 env を検証し、`app_config` へ反映 |
 | 2. ブラウザ認可 | ローカル実行時はブラウザを自動で開く。ブラウザが使えない環境では認可 URL を表示し、表示されたコードをターミナルへ入力する |
 | 3. トークン保存 | 取得した refresh_token 等を `config/google_token.json` に書き出す |
 
@@ -327,8 +347,7 @@ flowchart LR
 | `commands/fetch_gomi/main.py` | ゴミ収集日パイプライン本体（`python -m google_ical.commands.fetch_gomi`） |
 | `commands/sync_calendar/main.py` | 予定 JSON → Google 反映（`python -m google_ical.commands.sync_calendar`） |
 | `cli.py` | コマンド共通の終了コード処理 |
-| `config.py` | 必須環境変数 → `AppConfig` |
-| `constants.py` | 固定パス・デフォルト値 |
+| `config.py` | コマンド別 `check_*_config`、固定値定数、`app_config` |
 | `exceptions.py` | 共通例外（`GoogleIcalError` 基底） |
 | `pipeline_log.py` | 段階ログ（stdout / stderr） |
 | `content/events/models.py` | 予定 JSON のドメイン型・内部 ID 生成 |
