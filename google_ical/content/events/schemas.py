@@ -6,7 +6,6 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from google_ical.constants import DEFAULT_EVENT_SOURCE
 from google_ical.content.events.datetime_parse import format_jst_datetime, parse_strict_jst_datetime
 
 
@@ -52,7 +51,7 @@ class EventRecordSchema(BaseModel):
 class EventsFileSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    source: str = DEFAULT_EVENT_SOURCE
+    source: str
     events: list[EventRecordSchema]
 
     @field_validator("source")

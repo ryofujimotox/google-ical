@@ -11,7 +11,7 @@ from google_ical.exceptions import EventsError
 
 
 def test_load_merged_events_merges_files_in_lexicographic_order(tmp_path) -> None:
-    events_dir = tmp_path / "events"
+    events_dir = tmp_path / "ical_jsons"
     events_dir.mkdir()
 
     (events_dir / "b_second.json").write_text(
@@ -58,7 +58,7 @@ def test_load_merged_events_merges_files_in_lexicographic_order(tmp_path) -> Non
 
 
 def test_load_merged_events_rejects_invalid_datetime_format(tmp_path) -> None:
-    events_dir = tmp_path / "events"
+    events_dir = tmp_path / "ical_jsons"
     events_dir.mkdir()
     (events_dir / "invalid.json").write_text(
         json.dumps(
@@ -82,7 +82,7 @@ def test_load_merged_events_rejects_invalid_datetime_format(tmp_path) -> None:
 
 
 def test_load_merged_events_rejects_blank_source(tmp_path) -> None:
-    events_dir = tmp_path / "events"
+    events_dir = tmp_path / "ical_jsons"
     events_dir.mkdir()
     (events_dir / "invalid.json").write_text(
         json.dumps(
@@ -106,7 +106,7 @@ def test_load_merged_events_rejects_blank_source(tmp_path) -> None:
 
 
 def test_load_merged_events_accepts_empty_events_file(tmp_path) -> None:
-    events_dir = tmp_path / "events"
+    events_dir = tmp_path / "ical_jsons"
     events_dir.mkdir()
     (events_dir / "manual.json").write_text(
         json.dumps({"source": "manual", "events": []}, ensure_ascii=False),
@@ -119,7 +119,7 @@ def test_load_merged_events_accepts_empty_events_file(tmp_path) -> None:
 
 
 def test_load_merged_events_rejects_missing_events_key(tmp_path) -> None:
-    events_dir = tmp_path / "events"
+    events_dir = tmp_path / "ical_jsons"
     events_dir.mkdir()
     (events_dir / "invalid.json").write_text(
         json.dumps({"source": "manual"}, ensure_ascii=False),

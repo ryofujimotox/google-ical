@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from google_ical.content.pdf import download_pdf
+from google_ical.content.pdf import download_pdf, save_pdf
 from google_ical.exceptions import PdfDownloadError
 
 
@@ -43,3 +43,11 @@ def test_download_pdf_accepts_application_pdf(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr("google_ical.content.pdf.httpx.get", lambda *args, **kwargs: _FakeResponse())
 
     assert download_pdf("https://example.jp/download?id=123") == b"%PDF-1.4"
+
+
+def test_save_pdf_writes_bytes_atomically(tmp_path) -> None:
+    path = tmp_path / "pdfs" / "gomi.pdf"
+
+    save_pdf(path, b"%PDF-1.4 test")
+
+    assert path.read_bytes() == b"%PDF-1.4 test"

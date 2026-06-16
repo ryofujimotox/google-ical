@@ -48,6 +48,8 @@ def generate_event_id(
     start: str,
     end: str,
 ) -> str:
-    """source・ファイル名・summary・start・end から内部 ID を生成する。"""
+    """予定の内容から冪等な内部 ID（SHA-256 hex）を生成する。
+    例: source="gomi", summary="可燃ごみ", start="2026-06-03T00:00:00", ... → 64 文字の hex
+    """
     payload = "\n".join((source, filename, summary, start, end))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()

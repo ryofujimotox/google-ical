@@ -8,8 +8,8 @@
 
 - cron で単発実行する Python バッチ
 - **汎用 JSON** でカレンダーイベントを定義し、**Google カレンダー**へ反映する
-- **ゴミ収集日**は別コマンド: `region` を ChatGPT に渡して PDF URL を調査 → PDF をダウンロード → ChatGPT で JSON 化し、予定 JSON ディレクトリへ書き出す
-- **カレンダー反映**は別コマンド: 予定 JSON ディレクトリ内の **全 JSON** を読み、Google カレンダーへ反映する
+- **ゴミ収集日**は別コマンド: `region` を ChatGPT に渡して PDF URL を調査 → PDF をダウンロード → ChatGPT で JSON 化し、ical JSON ディレクトリへ書き出す
+- **カレンダー反映**は別コマンド: ical JSON ディレクトリ内の **全 JSON** を読み、Google カレンダーへ反映する
 - 常駐プロセス・Web フレームワークは使わない
 - **リポジトリ名**: `google-ical`
 - **Python パッケージ名**: `google_ical`
@@ -20,8 +20,8 @@ flowchart LR
 
   subgraph batch["google-ical"]
     direction LR
-    fetchGomi["fetch_gomi"] --> eventsJson["予定 JSON"]
-    eventsJson --> syncCal["sync_calendar"]
+    fetchGomi["fetch_gomi"] --> icalJsons["ical JSON"]
+    icalJsons --> syncCal["sync_calendar"]
     env[".env"] --> fetchGomi
     env --> syncCal
     syncCal --> gcal["Google カレンダー"]
@@ -119,11 +119,11 @@ flowchart LR
 ## JSON 仕様
 
 - 正本は本節の表と JSON 例とする
-- **予定 JSON**（`EVENTS_JSON_DIR` 内）と **ゴミ収集日設定 JSON**（`GOMI_CONFIG_PATH`）で役割を分ける
+- **ical JSON**（`ICAL_JSONS_DIR` 内）を正本とする。ゴミ収集日の自治体名・PDF URL 上書きは **`.env`**（`GOMI_REGION` / `GOMI_PDF_URL_OVERRIDE`）
 - 日時は常に **JST**。JSON に `timezone` は書かない
 
 
-### 予定 JSON（`EVENTS_JSON_DIR` 内の各ファイル）
+### ical JSON（`ICAL_JSONS_DIR` 内の各ファイル）
 
 - `sync_calendar` はディレクトリ内の `*.json` を **ファイル名の辞書順** で読み、すべての `events[]` を合成する
 - 1 ファイル = 1 予定のまとまり（手動定義・ゴミ収集日由来・将来の自動生成など）
@@ -166,15 +166,15 @@ flowchart LR
 
 ### マージ規則（`sync_calendar`）
 
-- 合成対象は `EVENTS_JSON_DIR` 内の **全 `*.json`** の `events[]` の和集合とする
+- 合成対象は `ICAL_JSONS_DIR` 内の **全 `*.json`** の `events[]` の和集合とする
 - 合成後に Google カレンダーへ一括反映する（段階的な部分更新は行わない）
-- ゴミ収集日由来の予定 JSON は `fetch_gomi` が `output_file` に書き出す
+- ゴミ収集日由来の ical JSON は `fetch_gomi` が `ICAL_JSONS_DIR` / `ICAL_JSONS_GOMI` に書き出す
 
 
 ### JSON テンプレート
 
 - **2026 年 6 月**の 1 ヶ月分の雛形
-- 配置先: `config/gomi_config.json`、`config/events/manual.json`、`config/events/gomi.json`
+- 配置先: `config/ical_jsons/manual.json`、`config/ical_jsons/gomi.json`
 
 
 
@@ -222,7 +222,7 @@ flowchart LR
 | 項目 | 内容 |
 |------|------|
 | 入力 | 段 2 でダウンロードした PDF |
-| 出力 | `config/events/gomi.json` テンプレートと同じ `events[]` 形式 |
+| 出力 | `config/ical_jsons/gomi.json` テンプレートと同じ `events[]` 形式 |
 | 意図 | PDF からその月のゴミ収集日を読み取り、日付ごとのイベントにする |
 | PDF 処理 | 一般的な自治体 PDF を想定。サイズ上限・事前テキスト化の特別扱いはしない |
 | プロンプト | 添付 PDF からゴミ収集日を読み取り、`events[]` 相当の JSON 配列のみ返す。`all_day: true`、`end` は翌日 0:00、読み取れない予定は作らない。正本: `google_ical/content/openai_client.py` の `PDF_TO_EVENTS_PROMPT` |
@@ -242,7 +242,7 @@ flowchart LR
 
 ### 同期方針
 
-- `EVENTS_JSON_DIR` 内の全 `*.json` を読み、各ファイルの `events[]` を合成して反映する
+- `ICAL_JSONS_DIR` 内の全 `*.json` を読み、各ファイルの `events[]` を合成して反映する
 - 成功時、**当月分を JSON どおりの状態に揃える**（作成・更新・削除）
 - [内部 ID（自動生成）](#内部-id自動生成) を Google イベントの `extendedProperties.private` に `google_ical_id` として保存する
 - 各イベントの `google_ical_source` は、元 JSON ファイルの `source` を引き継ぐ
@@ -275,12 +275,12 @@ flowchart LR
 
 ### `fetch_gomi` のパイプライン
 
-- **設定読込 →（ChatGPT）URL 調査 → PDF 取得 →（ChatGPT）PDF→JSON → 予定 JSON 書き出し**
+- **設定読込 →（ChatGPT）URL 調査 → PDF 取得 →（ChatGPT）PDF→JSON → ical JSON 書き出し**
 
 
 ### `sync_calendar` のパイプライン
 
-- **設定読込 → 予定 JSON ディレクトリ読込 → イベント合成 → Google 反映**
+- **設定読込 → ical JSON ディレクトリ読込 → イベント合成 → Google 反映**
 
 
 ### 成功または失敗時の挙動
@@ -310,7 +310,7 @@ flowchart LR
 ## 単体テスト（最小仕様）
 
 - テストランナーは `pytest` を使う
-- 単体テストは責務単位で分ける（**予定 JSON ディレクトリ読込**、**イベント合成**、**ゴミ収集日 PDF→予定 JSON の正規化**）
+- 単体テストは責務単位で分ける（**ical JSON ディレクトリ読込**、**イベント合成**、**ゴミ収集日 PDF→ical JSON の正規化**）
 - 設定読込は必須環境変数不足で失敗し、原因が分かる日本語メッセージを返す
 - テストファイルは実行ファイル単位で分ける
 - テスト関数は対象関数ごとに分ける（1 テスト関数 = 1 関数の 1 観点）
@@ -344,8 +344,8 @@ flowchart LR
 | `pipeline_log.py` | 段階ログ（stdout / stderr） |
 | `content/events/models.py` | 予定 JSON のドメイン型・内部 ID 生成 |
 | `content/events/schemas.py` | 予定 JSON の Pydantic 検証 |
-| `content/events/loader.py` | 予定 JSON ディレクトリ読込・合成 |
-| `content/events/writer.py` | 予定 JSON ファイル書き出し |
+| `content/events/loader.py` | ical JSON ディレクトリ読込・合成 |
+| `content/events/writer.py` | ical JSON ファイル書き出し |
 | `content/gomi/normalize.py` | ChatGPT 返却 events[] のゴミ収集日正規化 |
 | `content/gomi/pipeline.py` | `fetch_gomi` 各段処理 |
 | `content/pdf.py` | PDF HTTP 取得 |
