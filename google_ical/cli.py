@@ -9,7 +9,9 @@ from google_ical.pipeline_log import log_error
 
 
 def run_command(handler: Callable[[], None]) -> int:
-    """handler を実行し、ドメイン例外は日本語メッセージ付きで非 0 終了する。"""
+    """コマンド本体を実行し、例外を終了コードに変換する。
+    例: 成功 → 0、ConfigError / GoogleIcalError → 1
+    """
     try:
         handler()
     except ConfigError as exc:
