@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 from pydantic import ValidationError
 
-from google_ical.constants import JST_TIMEZONE
+from google_ical.config import TIMEZONE
 from google_ical.content.events.datetime_parse import parse_strict_jst_datetime
 from google_ical.content.events.models import CalendarEvent
 from google_ical.content.events.schemas import EventRecordSchema
@@ -20,15 +20,19 @@ _TARGET_MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 
 
 def current_jst_target_month() -> str:
-    """月次バッチの対象月（JST の YYYY-MM）。"""
-    return datetime.now(ZoneInfo(JST_TIMEZONE)).strftime("%Y-%m")
+    """月次バッチの対象月を返す（JST の YYYY-MM）。
+    例: 2026年6月実行 → "2026-06"
+    """
+    return datetime.now(ZoneInfo(TIMEZONE)).strftime("%Y-%m")
 
 
-def normalize_gomi_events(output_text: str, *, target_month: str | None = None) -> tuple[CalendarEvent, ...]:
-    """JSON 文字列を検証し、決定的な順序の CalendarEvent タプルを返す。
-
-    例: '[{"summary":"可燃ごみ","start":"2026-06-03T00:00:00","end":"2026-06-04T00:00:00","all_day":true}]'
-        → (CalendarEvent(summary="可燃ごみ", ...),)
+def normalize_gomi_events(
+    output_text: str,
+    *,
+    target_month: str | None = None,
+) -> tuple[CalendarEvent, ...]:
+    """ChatGPT 返却 JSON を検証し、CalendarEvent 列へ正規化する。
+    例: '[{"summary":"可燃ごみ","start":"2026-06-03T00:00:00",...}]' → (CalendarEvent(...),)
     """
     if target_month is not None:
         _validate_target_month(target_month)
@@ -50,7 +54,9 @@ def normalize_gomi_events(output_text: str, *, target_month: str | None = None) 
 
 
 def _deduplicate_events(events: tuple[CalendarEvent, ...]) -> tuple[CalendarEvent, ...]:
-    """summary/start/end が同一の重複を除く（内部 ID 衝突による同期失敗を防ぐ）。"""
+    """summary/start/end が同一の重複を除く。
+    例: 同じ可燃ごみ×2件 → 1件にまとめる
+    """
     seen: set[tuple[str, str, str]] = set()
     unique: list[CalendarEvent] = []
     for event in events:
@@ -63,6 +69,7 @@ def _deduplicate_events(events: tuple[CalendarEvent, ...]) -> tuple[CalendarEven
 
 
 def _validate_target_month(target_month: str) -> None:
+    """target_month が YYYY-MM 形式か検証する。"""
     if not _TARGET_MONTH_RE.fullmatch(target_month):
         raise OpenAIClientError(f"target_month の形式が不正です: {target_month!r}")
 
@@ -71,6 +78,9 @@ def _filter_events_for_target_month(
     events: tuple[CalendarEvent, ...],
     target_month: str,
 ) -> tuple[CalendarEvent, ...]:
+    """対象月のイベントだけ残す。
+    例: target_month="2026-06" → start が 6 月のものだけ
+    """
     return tuple(event for event in events if _event_start_month(event) == target_month)
 
 
@@ -79,6 +89,7 @@ def _event_start_month(event: CalendarEvent) -> str:
 
 
 def _loads_json_only(output_text: str) -> Any:
+    """ChatGPT 応答から JSON だけを読み取る（Markdown コードブロックは拒否）。"""
     text = output_text.strip()
     if text.startswith("```"):
         raise OpenAIClientError("JSON 以外の Markdown が含まれています")
@@ -89,6 +100,7 @@ def _loads_json_only(output_text: str) -> Any:
 
 
 def _normalize_event(raw: object) -> CalendarEvent:
+    """events[] の 1 要素を検証して CalendarEvent にする（ゴミ収集日は all_day 必須）。"""
     if not isinstance(raw, dict):
         raise OpenAIClientError("events[] の要素がオブジェクトではありません")
 

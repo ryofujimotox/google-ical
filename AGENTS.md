@@ -158,18 +158,10 @@ flowchart LR
 - **繰り返し（RRULE）は非対応**。同種の予定は **日付ごとに `events[]` を並べる**（その月分を個別イベントで表現する）
 
 
-### ゴミ収集日設定 JSON（`GOMI_CONFIG_PATH`）
+### ゴミ収集日（`fetch_gomi` の設定）
 
-- `fetch_gomi` のみが読む（`sync_calendar` は読まない）
-
-
-#### `gomi`（ゴミ収集日パイプライン）
-
-| キー | 必須 | 内容 |
-|------|------|------|
-| `region` | 必須 | 自治体名 **1 件**（例: `東京都〇〇区`）。ChatGPT による PDF URL 探索に渡す |
-| `output_file` | 任意 | `EVENTS_JSON_DIR` 内の出力ファイル名（デフォルト: `gomi.json`） |
-| `pdf_url_override` | 任意 | 指定時は URL 探索をスキップし、この URL から PDF を取得する |
+- 自治体名・PDF URL 上書きは **`.env`** の `GOMI_REGION` / `GOMI_PDF_URL_OVERRIDE`（上記「設定」参照）
+- 出力先は `config.py` の `ICAL_JSONS_DIR` / `ICAL_JSONS_GOMI`（デフォルト: `config/ical_jsons/gomi.json`）
 
 
 ### マージ規則（`sync_calendar`）
@@ -190,17 +182,17 @@ flowchart LR
 
 - エントリポイント: `python -m google_ical.commands.fetch_gomi`
 - 各段が成功したあとだけ次の段へ進む
-- 成功時、`EVENTS_JSON_DIR` / `gomi.output_file` に予定 JSON を書き出す。失敗時は既存ファイルを上書きしない
+- 成功時、`ICAL_JSONS_DIR` / `ICAL_JSONS_GOMI` に ical JSON を書き出す。失敗時は既存ファイルを上書きしない
 
 
 ### 処理段
 
 | 段 | 担当 | 内容 | 失敗時 |
 |----|------|------|--------|
-| 1. URL 調査 | **ChatGPT** | `gomi.region` を渡し、ゴミ収集日 PDF の URL を調査する。返却は **URL 文字列のみ** を想定する。`pdf_url_override` があればスキップする | 非 `0`。以降の段は実行しない |
+| 1. URL 調査 | **ChatGPT** | `GOMI_REGION` を渡し、ゴミ収集日 PDF の URL を調査する。返却は **URL 文字列のみ** を想定する。`GOMI_PDF_URL_OVERRIDE` があればスキップする | 非 `0`。以降の段は実行しない |
 | 2. PDF 取得 | プログラム | 得た URL から HTTP で PDF をダウンロードする | 非 `0`。以降の段は実行しない |
 | 3. PDF→JSON | **ChatGPT** | ダウンロードした PDF を渡し、予定 JSON（`events[]`）に変換する | 非 `0`。以降の段は実行しない |
-| 4. 書き出し | プログラム | `source: gomi` を付与し、`EVENTS_JSON_DIR` / `output_file` に保存する | — |
+| 4. 書き出し | プログラム | `source: gomi` を付与し、`ICAL_JSONS_DIR` / `ICAL_JSONS_GOMI` に保存する | — |
 
 - 段 1・3 が **AI の仕事**。段 2・4 はプログラム側
 
@@ -217,7 +209,7 @@ flowchart LR
 
 | 項目 | 内容 |
 |------|------|
-| 入力 | `gomi.region`（自治体名など） |
+| 入力 | `GOMI_REGION`（自治体名など） |
 | 出力 | ゴミ収集日 PDF の **URL のみ**（1 文字列。JSON オブジェクトではない） |
 | 意図 | 自治体の公式ゴミ収集日 PDF へのリンクを特定する |
 | 幻覚対策 | プロンプトで公式ドメインを優先する。URL は段 2 で HTTP 応答を検証する |
@@ -354,7 +346,6 @@ flowchart LR
 | `content/events/schemas.py` | 予定 JSON の Pydantic 検証 |
 | `content/events/loader.py` | 予定 JSON ディレクトリ読込・合成 |
 | `content/events/writer.py` | 予定 JSON ファイル書き出し |
-| `content/gomi/config.py` | ゴミ収集日設定 JSON 読込 |
 | `content/gomi/normalize.py` | ChatGPT 返却 events[] のゴミ収集日正規化 |
 | `content/gomi/pipeline.py` | `fetch_gomi` 各段処理 |
 | `content/pdf.py` | PDF HTTP 取得 |

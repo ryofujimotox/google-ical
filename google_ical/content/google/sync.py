@@ -11,20 +11,18 @@ from datetime import datetime
 from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
-from google_ical.config import AppConfig
-from google_ical.constants import (
+from google_ical.config import (
+    DATETIME_FORMAT,
     GOOGLE_ICAL_ID_KEY,
     GOOGLE_ICAL_SOURCE_KEY,
-    JST_DATETIME_FORMAT,
-    JST_TIMEZONE,
+    TIMEZONE,
+    app_config as config,
 )
 from google_ical.content.events.datetime_parse import format_jst_datetime, parse_strict_jst_datetime
 from google_ical.content.events.models import MergedEvent
 from google_ical.content.google.auth import load_calendar_credentials
 from google_ical.content.google.calendar import build_calendar_service, delete_event, list_managed_events, upsert_event
 from google_ical.exceptions import CalendarSyncError, GoogleAuthError
-
-_JST = ZoneInfo(JST_TIMEZONE)
 
 
 @dataclass(frozen=True)
@@ -36,15 +34,19 @@ class _AppliedMutation:
     rollback_body: dict[str, Any] | None
 
 
-def sync_events_to_google_calendar(
-    config: AppConfig,
-    events: tuple[MergedEvent, ...],
-) -> None:
-    """予定JSONの合成結果に合わせ、管理イベントを作成・更新・削除する。"""
+def sync_events_to_google_calendar(events: tuple[MergedEvent, ...]) -> None:
+    """合成済み予定を Google カレンダーへ反映する（作成・更新・削除）。
+    例: (MergedEvent(...),) → カレンダーが JSON と同じ状態になる
+    """
     calendar_id = config.google_calendar_id
     try:
-        service = build_calendar_service(load_calendar_credentials())
-        existing = list_managed_events(service, calendar_id=calendar_id)
+        service = build_calendar_service(load_calendar_credentials(config.google_token_path))
+        existing = list_managed_events(
+            service,
+            calendar_id=calendar_id,
+            google_ical_id_key=GOOGLE_ICAL_ID_KEY,
+            google_ical_source_key=GOOGLE_ICAL_SOURCE_KEY,
+        )
         desired = _build_desired_events(events)
         _apply_sync(service, calendar_id, existing, desired)
     except (CalendarSyncError, GoogleAuthError):
@@ -56,6 +58,7 @@ def sync_events_to_google_calendar(
 
 
 def _build_desired_events(events: tuple[MergedEvent, ...]) -> dict[str, dict[str, Any]]:
+    """MergedEvent 列を Google API 用 body 辞書へ変換する（内部 ID をキーにする）。"""
     desired: dict[str, dict[str, Any]] = {}
     for event in events:
         if event.event_id in desired:
@@ -70,6 +73,7 @@ def _apply_sync(
     existing: dict[str, dict[str, Any]],
     desired: dict[str, dict[str, Any]],
 ) -> None:
+    """desired に合わせて insert / update / delete する。途中失敗時はロールバックする。"""
     applied: list[_AppliedMutation] = []
     try:
         for event_id, body in desired.items():
@@ -141,6 +145,9 @@ def _snapshot_event(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def _event_to_google_body(event: MergedEvent) -> dict[str, Any]:
+    """MergedEvent を Google Calendar API のイベント body に変換する。
+    例: 終日イベント → {"summary": "可燃ごみ", "start": {"date": "2026-06-03"}, ...}
+    """
     body: dict[str, Any] = {
         "summary": event.summary,
         "start": _google_time(event.start, all_day=event.all_day),
@@ -157,13 +164,18 @@ def _event_to_google_body(event: MergedEvent) -> dict[str, Any]:
 
 
 def _google_time(value: str, *, all_day: bool) -> dict[str, str]:
+    """アプリ日時文字列を Google API の start/end 形式へ変換する。"""
     parsed = parse_strict_jst_datetime(value)
     if all_day:
         return {"date": parsed.date().isoformat()}
-    return {"dateTime": format_jst_datetime(parsed), "timeZone": JST_TIMEZONE}
+    return {
+        "dateTime": format_jst_datetime(parsed),
+        "timeZone": TIMEZONE,
+    }
 
 
 def _needs_update(current: dict[str, Any], desired: dict[str, Any]) -> bool:
+    """既存 Google イベントと desired body に差分があるか判定する。"""
     if current.get("summary") != desired.get("summary"):
         return True
     if _text_value(current.get("description")) != _text_value(desired.get("description")):
@@ -185,7 +197,7 @@ def _google_times_equal(left: object, right: object) -> bool:
 
 
 def _normalize_google_time(value: dict[str, Any]) -> tuple[str, str]:
-    """Google 返却と desired body を JST 基準の比較キーにそろえる。"""
+    """Google 返却と desired body をアプリ TZ 基準の比較キーにそろえる。"""
     if "date" in value:
         return (str(value["date"]), "")
     dt_raw = str(value.get("dateTime", ""))
@@ -194,10 +206,10 @@ def _normalize_google_time(value: dict[str, Any]) -> tuple[str, str]:
     normalized = dt_raw.replace("Z", "+00:00")
     parsed = datetime.fromisoformat(normalized)
     if parsed.tzinfo is None:
-        tz_name = str(value.get("timeZone") or JST_TIMEZONE)
+        tz_name = str(value.get("timeZone") or TIMEZONE)
         parsed = parsed.replace(tzinfo=ZoneInfo(tz_name))
-    jst = parsed.astimezone(_JST)
-    return (jst.strftime(JST_DATETIME_FORMAT), JST_TIMEZONE)
+    localized = parsed.astimezone(ZoneInfo(TIMEZONE))
+    return (localized.strftime(DATETIME_FORMAT), TIMEZONE)
 
 
 def _text_value(value: object) -> str:

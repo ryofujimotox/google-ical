@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from google_ical.constants import GOOGLE_ICAL_ID_KEY, GOOGLE_ICAL_SOURCE_KEY, JST_TIMEZONE
+from google_ical.config import GOOGLE_ICAL_ID_KEY, GOOGLE_ICAL_SOURCE_KEY, TIMEZONE, AppConfig
 from google_ical.content.events.models import MergedEvent
 from google_ical.content.google.sync import (
     _apply_sync,
@@ -15,7 +15,7 @@ from google_ical.content.google.sync import (
 from google_ical.exceptions import CalendarSyncError
 
 
-def test_event_to_google_body_converts_all_day_to_google_date() -> None:
+def test_event_to_google_body_converts_all_day_to_google_date(app_config: AppConfig) -> None:
     body = _event_to_google_body(
         MergedEvent(
             event_id="event-id",
@@ -49,8 +49,8 @@ def test_event_to_google_body_converts_timed_event_to_jst_datetime() -> None:
         ),
     )
 
-    assert body["start"] == {"dateTime": "2026-06-03T10:00:00", "timeZone": JST_TIMEZONE}
-    assert body["end"] == {"dateTime": "2026-06-03T11:00:00", "timeZone": JST_TIMEZONE}
+    assert body["start"] == {"dateTime": "2026-06-03T10:00:00", "timeZone": TIMEZONE}
+    assert body["end"] == {"dateTime": "2026-06-03T11:00:00", "timeZone": TIMEZONE}
     assert body["description"] == "歯科"
 
 
@@ -100,8 +100,8 @@ def test_needs_update_ignores_unmanaged_private_properties() -> None:
 def test_needs_update_ignores_rfc3339_offset_for_timed_events() -> None:
     desired = {
         "summary": "通院",
-        "start": {"dateTime": "2026-06-03T10:00:00", "timeZone": JST_TIMEZONE},
-        "end": {"dateTime": "2026-06-03T11:00:00", "timeZone": JST_TIMEZONE},
+        "start": {"dateTime": "2026-06-03T10:00:00", "timeZone": TIMEZONE},
+        "end": {"dateTime": "2026-06-03T11:00:00", "timeZone": TIMEZONE},
         "extendedProperties": {
             "private": {
                 "google_ical_id": "event-id",
