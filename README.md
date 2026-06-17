@@ -7,6 +7,7 @@
 ## 目的
 
 **iCalJSON** で Google カレンダーを更新する。
+
 近所の **ゴミ収集日 PDF** を自動取得して **iCalJSON** にし、反映する機能も含む。
 
 
@@ -19,16 +20,20 @@
 
 ```mermaid
 flowchart LR
-  cron["cron"] --> batch
+  cron["cron"] --> gomiPdf
+  cron --> gcal
 
-  subgraph batch["google-ical"]
+  subgraph fetch_gomi["fetch_gomi"]
     direction LR
-    fetchGomi["fetch_gomi"] --> icalJsons["iCalJSON"]
-    icalJsons --> syncCal["sync_calendar"]
-    env[".env"] --> fetchGomi
-    env --> syncCal
-    syncCal --> gcal["Google カレンダー"]
+    gomiPdf["ゴミ収集日PDFを取得"]
+    gomiPdf --> icalJsons["iCalJSONに変換"]
   end
+
+  subgraph sync_calendar["sync_calendar"]
+    gcal["Googleカレンダーに反映"]
+  end
+
+  icalJsons --> gcal
 
   gcal --> publicIcal["公開 iCal URL"]
   publicIcal --> quote0["電子ペーパー（quote0）"]
