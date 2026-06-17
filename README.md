@@ -6,17 +6,16 @@
 
 ## 目的
 
-JSON とゴミ収集日 PDF から Google カレンダーを更新するバッチ。
+**iCalJSON** で Google カレンダーを更新する。
+近所の **ゴミ収集日 PDF** を自動取得して **iCalJSON** にし、反映する機能も含む。
 
 
 
 ## 概要
 
-1. ChatGPT による **ゴミ収集日 PDF** の URL 調査
-2. URL から **ゴミ収集日 PDF** をダウンロード
-3. ChatGPT により **ゴミ収集日 PDF** を **iCalJSON** （iCal取込用JSON）に変換
-4. **iCalJSON** を保存
-5. 全 **iCalJSON** を Google カレンダーへ反映
+1. ChatGPT で近所の **ゴミ収集日 PDF** をダウンロード
+2. ChatGPT で **ゴミ収集日 PDF** を **iCalJSON**（iCal取込用JSON）に変換
+3. 全 **iCalJSON** を Google カレンダーへ反映
 
 ```mermaid
 flowchart LR
@@ -85,7 +84,7 @@ python -m google_ical.commands.sync_calendar
 ## 設計の要点
 
 - **fetch_gomi → sync_calendar** の順で実行（月 1 回 cron）
-- iCalJSON は **`ical_jsons/` 内の全 `*.json`** を合成して反映
+- iCalJSON は **`config/ical_jsons/` 内の全 `*.json`** を合成して反映
 - 内部 ID は **SHA-256**（ファイル名 + 予定内容）で冪等に作成・更新・削除
 - 詳細な同期ルールは [AGENTS.md](./AGENTS.md) の「Google カレンダー連携」を参照
 
@@ -120,6 +119,7 @@ google_ical/
 config/
   json_sources/            # JSON 変換用ソース（fetch_gomi が保存する PDF 等）
   ical_jsons/              # iCalJSON テンプレート（gomi.json / sample.json）
+  google_token.json        # OAuth トークン（Git に含めない）
 
 tests/                     # 単体テスト（google_ical/ と同じ階層）
   content/
