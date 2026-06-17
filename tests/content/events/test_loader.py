@@ -120,6 +120,15 @@ def test_load_merged_events_rejects_invalid_datetime_format(tmp_path) -> None:
         load_merged_events(events_dir)
 
 
+def test_load_merged_events_accepts_empty_directory(tmp_path) -> None:
+    events_dir = tmp_path / "ical_jsons"
+    events_dir.mkdir()
+
+    merged = load_merged_events(events_dir)
+
+    assert merged == ()
+
+
 def test_load_merged_events_accepts_empty_events_file(tmp_path) -> None:
     events_dir = tmp_path / "ical_jsons"
     events_dir.mkdir()

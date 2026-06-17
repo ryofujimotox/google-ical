@@ -27,14 +27,12 @@ def event_source_from_json_path(path: Path) -> str:
 def load_events_files(ical_jsons_dir: Path) -> tuple[EventsFile, ...]:
     """iCalJSON ディレクトリ内の *.json をファイル名順で読む。
     例: Path("config/ical_jsons") → (EventsFile(source="gomi", ...), EventsFile(source="sample", ...))
+    *.json が無いときは () を返す。
     """
     if not ical_jsons_dir.is_dir():
         raise EventsError(f"iCalJSON ディレクトリがありません: {ical_jsons_dir}")
 
     json_paths = sorted(ical_jsons_dir.glob("*.json"), key=lambda path: path.name)
-    if not json_paths:
-        raise EventsError(f"iCalJSON が 1 件もありません: {ical_jsons_dir}")
-
     return tuple(_load_events_file(path) for path in json_paths)
 
 
