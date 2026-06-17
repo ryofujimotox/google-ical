@@ -49,15 +49,6 @@ class EventRecordSchema(BaseModel):
 
 
 class EventsFileSchema(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
-    source: str
     events: list[EventRecordSchema]
-
-    @field_validator("source")
-    @classmethod
-    def validate_source_not_blank(cls, value: str) -> str:
-        stripped = value.strip()
-        if not stripped:
-            raise ValueError("source は空文字列にできません")
-        return stripped

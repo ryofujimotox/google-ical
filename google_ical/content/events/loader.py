@@ -12,9 +12,21 @@ from google_ical.content.events.schemas import EventsFileSchema
 from google_ical.exceptions import EventsError
 
 
+def event_source_from_json_path(path: Path) -> str:
+    """JSON ファイル名（拡張子なし）から google_ical_source 用ラベルを返す。
+    例: Path("config/ical_jsons/gomi.json") → "gomi"
+    """
+    if path.suffix != ".json":
+        raise EventsError(f"JSON ファイル名から source を決められません: {path}")
+    source = path.stem
+    if not source or source.startswith("."):
+        raise EventsError(f"JSON ファイル名から source を決められません: {path}")
+    return source
+
+
 def load_events_files(ical_jsons_dir: Path) -> tuple[EventsFile, ...]:
     """iCalJSON ディレクトリ内の *.json をファイル名順で読む。
-    例: Path("config/ical_jsons") → (EventsFile(source="gomi", ...), EventsFile(source="manual", ...))
+    例: Path("config/ical_jsons") → (EventsFile(source="gomi", ...), EventsFile(source="sample", ...))
     """
     if not ical_jsons_dir.is_dir():
         raise EventsError(f"iCalJSON ディレクトリがありません: {ical_jsons_dir}")
@@ -31,17 +43,24 @@ def load_merged_events(ical_jsons_dir: Path) -> tuple[MergedEvent, ...]:
     例: Path("config/ical_jsons") → (MergedEvent(event_id="a1b2...", summary="可燃ごみ", ...), ...)
     """
     merged: list[MergedEvent] = []
+    seen_ids: dict[str, str] = {}
     for events_file in load_events_files(ical_jsons_dir):
         for event in events_file.events:
+            event_id = generate_event_id(
+                filename=events_file.filename,
+                summary=event.summary,
+                start=event.start,
+                end=event.end,
+            )
+            if event_id in seen_ids:
+                raise EventsError(
+                    "iCalJSON の内部 ID が重複しています: "
+                    f"{event_id} ({seen_ids[event_id]} と {events_file.filename})",
+                )
+            seen_ids[event_id] = events_file.filename
             merged.append(
                 MergedEvent(
-                    event_id=generate_event_id(
-                        source=events_file.source,
-                        filename=events_file.filename,
-                        summary=event.summary,
-                        start=event.start,
-                        end=event.end,
-                    ),
+                    event_id=event_id,
                     source=events_file.source,
                     filename=events_file.filename,
                     summary=event.summary,
@@ -78,4 +97,4 @@ def _load_events_file(path: Path) -> EventsFile:
         )
         for item in parsed.events
     )
-    return EventsFile(source=parsed.source, filename=path.name, events=events)
+    return EventsFile(source=event_source_from_json_path(path), filename=path.name, events=events)

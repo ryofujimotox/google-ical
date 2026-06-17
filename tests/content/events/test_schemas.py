@@ -85,34 +85,6 @@ def test_event_record_schema_rejects_multi_day_timed_event() -> None:
         )
 
 
-def test_events_file_schema_rejects_blank_source() -> None:
-    with pytest.raises(ValidationError, match="source は空文字列"):
-        EventsFileSchema(
-            source="",
-            events=[
-                EventRecordSchema(
-                    summary="通院",
-                    start="2026-06-03T10:00:00",
-                    end="2026-06-03T11:00:00",
-                ),
-            ],
-        )
-
-
-def test_events_file_schema_rejects_whitespace_only_source() -> None:
-    with pytest.raises(ValidationError, match="source は空文字列"):
-        EventsFileSchema(
-            source="   ",
-            events=[
-                EventRecordSchema(
-                    summary="通院",
-                    start="2026-06-03T10:00:00",
-                    end="2026-06-03T11:00:00",
-                ),
-            ],
-        )
-
-
 def test_event_record_schema_rejects_blank_summary() -> None:
     with pytest.raises(ValidationError, match="summary は空文字列"):
         EventRecordSchema(
@@ -123,11 +95,17 @@ def test_event_record_schema_rejects_blank_summary() -> None:
 
 
 def test_events_file_schema_accepts_empty_events() -> None:
-    events_file = EventsFileSchema(source="manual", events=[])
+    events_file = EventsFileSchema(events=[])
+
+    assert events_file.events == []
+
+
+def test_events_file_schema_ignores_legacy_source_field() -> None:
+    events_file = EventsFileSchema.model_validate({"source": "legacy", "events": []})
 
     assert events_file.events == []
 
 
 def test_events_file_schema_requires_events_key() -> None:
     with pytest.raises(ValidationError, match="events"):
-        EventsFileSchema.model_validate({"source": "manual"})
+        EventsFileSchema.model_validate({})

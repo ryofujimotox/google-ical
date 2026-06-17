@@ -10,7 +10,7 @@ from google_ical.content.events.writer import save_events_file
 
 def test_save_events_file_replaces_atomically(tmp_path) -> None:
     path = tmp_path / "gomi.json"
-    path.write_text('{"source":"gomi","events":[{"summary":"旧"}]}\n', encoding="utf-8")
+    path.write_text('{"events":[{"summary":"旧"}]}\n', encoding="utf-8")
     original = path.read_text(encoding="utf-8")
 
     events = (
@@ -23,10 +23,10 @@ def test_save_events_file_replaces_atomically(tmp_path) -> None:
         ),
     )
 
-    save_events_file(path, source="gomi", events=events)
+    save_events_file(path, events=events)
 
     payload = json.loads(path.read_text(encoding="utf-8"))
-    assert payload["source"] == "gomi"
+    assert "source" not in payload
     assert payload["events"][0]["summary"] == "可燃ごみ"
     assert original != path.read_text(encoding="utf-8")
 
@@ -34,7 +34,7 @@ def test_save_events_file_replaces_atomically(tmp_path) -> None:
 def test_save_events_file_writes_empty_events(tmp_path) -> None:
     path = tmp_path / "gomi.json"
 
-    save_events_file(path, source="gomi", events=())
+    save_events_file(path, events=())
 
     payload = json.loads(path.read_text(encoding="utf-8"))
-    assert payload == {"source": "gomi", "events": []}
+    assert payload == {"events": []}

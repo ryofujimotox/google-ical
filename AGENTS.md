@@ -133,8 +133,9 @@ flowchart LR
 
 | キー | 必須 | 内容 |
 |------|------|------|
-| `source` | 任意 | 由来識別子（例: `manual`、`gomi`）。省略時 `manual`。Google 側の `google_ical_source` に引き渡す |
 | `events` | 必須 | イベント配列 |
+
+- `source` は JSON に**書かない**。読込時に **ファイル名（`.json` を除く）** から自動付与し、Google の `google_ical_source` に保存する（例: `gomi.json` → `gomi`）。旧形式の JSON に `source` キーがあっても**無視**する
 
 
 ### `events[]`
@@ -151,9 +152,10 @@ flowchart LR
 ### 内部 ID（自動生成）
 
 - JSON に `id` は **書かない**（ユーザーが指定しない）
-- 読込時に `source`・元 JSON ファイル名・`summary`・`start`・`end` から **決定的**に内部 ID を生成する
-- 生成式: 上記 5 項目を改行区切りで連結した文字列の **SHA-256**（hex 64 文字）
+- 読込時に **JSON ファイル名**・`summary`・`start`・`end` から **決定的**に内部 ID を生成する
+- 生成式: 上記 4 項目を改行区切りで連結した文字列の **SHA-256**（hex 64 文字）
 - 同一内容なら常に同一 ID（冪等な作成・更新・削除に使う）
+- タイトルや日時を変えると別 ID になる（旧予定は次回同期で削除される）
 - Google 側には `extendedProperties.private` の `google_ical_id` として保存する
 - **繰り返し（RRULE）は非対応**。同種の予定は **日付ごとに `events[]` を並べる**（その月分を個別イベントで表現する）
 
@@ -167,14 +169,14 @@ flowchart LR
 ### マージ規則（`sync_calendar`）
 
 - 合成対象は `ICAL_JSONS_DIR` 内の **全 `*.json`** の `events[]` の和集合とする
-- 合成後に Google カレンダーへ一括反映する（段階的な部分更新は行わない）
+- 合成後に Google カレンダーへ一括反映する（**ファイル単位の部分読み込みは行わない**。常に全 JSON を合成してから [差分同期](#同期方針) する）
 - ゴミ収集日由来の iCalJSON は `fetch_gomi` が `ICAL_JSONS_DIR` / `ICAL_JSONS_GOMI` に書き出す
 
 
 ### JSON テンプレート
 
 - **2026 年 6 月**の 1 ヶ月分の雛形
-- 配置先: `config/ical_jsons/manual.json`、`config/ical_jsons/gomi.json`
+- 配置先: `config/ical_jsons/sample.json`、`config/ical_jsons/gomi.json`
 
 
 
@@ -192,7 +194,7 @@ flowchart LR
 | 1. URL 調査 | **ChatGPT** | `GOMI_REGION` を渡し、ゴミ収集日 PDF の URL を調査する。返却は **URL 文字列のみ** を想定する。`GOMI_PDF_URL_OVERRIDE` があればスキップする | 非 `0`。以降の段は実行しない |
 | 2. PDF 取得 | プログラム | 得た URL から HTTP で PDF をダウンロードする | 非 `0`。以降の段は実行しない |
 | 3. PDF→JSON | **ChatGPT** | ダウンロードした PDF を渡し、iCalJSON（`events[]`）に変換する | 非 `0`。以降の段は実行しない |
-| 4. 書き出し | プログラム | `source: gomi` を付与し、`ICAL_JSONS_DIR` / `ICAL_JSONS_GOMI` に保存する | — |
+| 4. 書き出し | プログラム | `ICAL_JSONS_DIR` / `ICAL_JSONS_GOMI` に iCalJSON を保存する | — |
 
 - 段 1・3 が **AI の仕事**。段 2・4 はプログラム側
 
@@ -243,14 +245,27 @@ flowchart LR
 ### 同期方針
 
 - `ICAL_JSONS_DIR` 内の全 `*.json` を読み、各ファイルの `events[]` を合成して反映する
-- 成功時、**当月分を JSON どおりの状態に揃える**（作成・更新・削除）
+- 成功時、合成結果どおりに Google カレンダーを揃える（**差分同期**: 作成・更新・削除。全削除→再作成ではない）
 - [内部 ID（自動生成）](#内部-id自動生成) を Google イベントの `extendedProperties.private` に `google_ical_id` として保存する
-- 各イベントの `google_ical_source` は、元 JSON ファイルの `source` を引き継ぐ
-- **削除対象**: 本リポが管理するイベントのうち、今回の合成結果に含まれないもの
-  - iCalJSON から消えたイベント（同一内部 ID が合成結果に無い）
-  - 合成結果に無い自動生成由来イベント（例: `google_ical_source: gomi`）
-- `gomi.json` が無い、または `fetch_gomi` を実行しなかった月は、ゴミ収集日由来イベントは合成結果に含まれない。次回 `sync_calendar` 成功時に既存の該当イベントは削除される
-- 本リポが付与していない `extendedProperties` のイベントは触らない
+- 各イベントの `google_ical_source` は、元 JSON **ファイル名**（`.json` を除く）から自動付与する
+
+#### 管理対象と触らないもの
+
+- **管理対象**: `google_ical_id` と `google_ical_source` の両方が付いている予定のみ
+- **触らない**: 上記が無い予定（手動作成・他ツール由来など）は変更・削除しない
+
+#### 再同期時の動き
+
+| 状況 | 動作 |
+|------|------|
+| JSON にあって Google にない内部 ID | **作成** |
+| 両方にあって内容が同じ | **何もしない** |
+| 両方にあって内容が違う | **更新**（JSON が正本。Google 上の手動編集は上書きされる） |
+| Google にあって今回の合成結果にない内部 ID | **削除** |
+
+- JSON からイベントを消した、ファイルを `ical_jsons/` から消した、`events: []` にした → 該当の管理予定は次回成功時に削除される
+- `gomi.json` が無い月はゴミ収集日由来イベントは合成に含まれず、既存の該当管理予定は削除される
+- 内部 ID が異なる予定（非管理予定）はそのまま残る
 
 
 ### イベントの日時

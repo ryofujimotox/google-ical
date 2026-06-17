@@ -6,7 +6,7 @@ from google_ical.cli import run_command
 from google_ical.config import app_config as config, check_fetch_gomi_config
 from google_ical.content.events.writer import save_events_file
 from google_ical.content.gomi.normalize import current_jst_target_month
-from google_ical.content.gomi.pipeline import convert_gomi_pdf, fetch_gomi_pdf_url, gomi_event_source
+from google_ical.content.gomi.pipeline import convert_gomi_pdf, fetch_gomi_pdf_url
 from google_ical.content.pdf import download_pdf, save_pdf
 from google_ical.pipeline_log import log_info, log_stage_start, log_stage_success
 
@@ -46,7 +46,6 @@ def main() -> int:
         log_stage_start("JSON 保存", detail=output_path)
         save_events_file(
             config.ical_jsons_gomi,
-            source=gomi_event_source(config.ical_jsons_gomi),
             events=events,
         )
         log_stage_success("JSON 保存", detail=output_path)

@@ -39,8 +39,8 @@ def test_event_to_google_body_converts_timed_event_to_jst_datetime() -> None:
     body = _event_to_google_body(
         MergedEvent(
             event_id="event-id",
-            source="manual",
-            filename="manual.json",
+            source="sample",
+            filename="sample.json",
             summary="通院",
             start="2026-06-03T10:00:00",
             end="2026-06-03T11:00:00",
@@ -58,8 +58,8 @@ def test_event_to_google_body_uses_empty_description_to_clear_existing_text() ->
     body = _event_to_google_body(
         MergedEvent(
             event_id="event-id",
-            source="manual",
-            filename="manual.json",
+            source="sample",
+            filename="sample.json",
             summary="通院",
             start="2026-06-03T10:00:00",
             end="2026-06-03T11:00:00",
@@ -105,7 +105,7 @@ def test_needs_update_ignores_rfc3339_offset_for_timed_events() -> None:
         "extendedProperties": {
             "private": {
                 "google_ical_id": "event-id",
-                "google_ical_source": "manual",
+                "google_ical_source": "sample",
             },
         },
     }
@@ -169,8 +169,8 @@ def test_apply_sync_deletes_vanished_custom_source_event(monkeypatch: pytest.Mon
 def test_build_desired_events_rejects_duplicate_internal_id() -> None:
     event = MergedEvent(
         event_id="event-id",
-        source="manual",
-        filename="manual.json",
+        source="sample",
+        filename="sample.json",
         summary="通院",
         start="2026-06-03T10:00:00",
         end="2026-06-03T11:00:00",

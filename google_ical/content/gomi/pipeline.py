@@ -3,25 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from pathlib import Path
 
 from google_ical.config import app_config as config
 from google_ical.content.events.models import CalendarEvent
 from google_ical.content.openai_client import convert_pdf_to_events, investigate_gomi_pdf_url
 from google_ical.exceptions import GomiError, OpenAIClientError
-
-
-def gomi_event_source(output_path: Path) -> str:
-    """出力 JSON のファイル名から source 識別子を返す。
-    例: Path("config/ical_jsons/gomi.json") → "gomi"
-    """
-    name = output_path.name
-    if not name.endswith(".json"):
-        raise GomiError(f"ICAL_JSONS_GOMI は .json で終わる必要があります: {output_path}")
-    source = name.removesuffix(".json")
-    if not source:
-        raise GomiError(f"ICAL_JSONS_GOMI から source を決められません: {output_path}")
-    return source
 
 
 def fetch_gomi_pdf_url() -> str:

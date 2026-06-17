@@ -7,8 +7,7 @@ from google_ical.content.events.models import generate_event_id
 
 def test_generate_event_id_is_deterministic() -> None:
     kwargs = {
-        "source": "manual",
-        "filename": "manual.json",
+        "filename": "sample.json",
         "summary": "歯科医院",
         "start": "2026-06-05T14:00:00",
         "end": "2026-06-05T15:00:00",
@@ -22,8 +21,7 @@ def test_generate_event_id_is_deterministic() -> None:
 
 def test_generate_event_id_changes_when_input_changes() -> None:
     base = {
-        "source": "manual",
-        "filename": "manual.json",
+        "filename": "sample.json",
         "summary": "歯科医院",
         "start": "2026-06-05T14:00:00",
         "end": "2026-06-05T15:00:00",
@@ -31,4 +29,4 @@ def test_generate_event_id_changes_when_input_changes() -> None:
     original = generate_event_id(**base)
 
     assert original != generate_event_id(**{**base, "summary": "病院"})
-    assert original != generate_event_id(**{**base, "source": "gomi"})
+    assert original != generate_event_id(**{**base, "filename": "gomi.json"})
