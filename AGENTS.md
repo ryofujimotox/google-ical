@@ -8,8 +8,8 @@
 
 - cron で単発実行する Python バッチ
 - **汎用 JSON** でカレンダーイベントを定義し、**Google カレンダー**へ反映する
-- **ゴミ収集日**は別コマンド: `region` を ChatGPT に渡して PDF URL を調査 → PDF をダウンロード → ChatGPT で JSON 化し、ical JSON ディレクトリへ書き出す
-- **カレンダー反映**は別コマンド: ical JSON ディレクトリ内の **全 JSON** を読み、Google カレンダーへ反映する
+- **ゴミ収集日**は別コマンド: `region` を ChatGPT に渡して PDF URL を調査 → PDF をダウンロード → ChatGPT で JSON 化し、iCalJSON ディレクトリへ書き出す
+- **カレンダー反映**は別コマンド: iCalJSON ディレクトリ内の **全 JSON** を読み、Google カレンダーへ反映する
 - 常駐プロセス・Web フレームワークは使わない
 - **リポジトリ名**: `google-ical`
 - **Python パッケージ名**: `google_ical`
@@ -20,7 +20,7 @@ flowchart LR
 
   subgraph batch["google-ical"]
     direction LR
-    fetchGomi["fetch_gomi"] --> icalJsons["ical JSON"]
+    fetchGomi["fetch_gomi"] --> icalJsons["iCalJSON"]
     icalJsons --> syncCal["sync_calendar"]
     env[".env"] --> fetchGomi
     env --> syncCal
@@ -76,11 +76,11 @@ flowchart LR
 |------|------|
 | `JSON_SOURCE_DIR` | JSON 変換用ソース（PDF 等）の置き場 |
 | `JSON_SOURCE_GOMI` | JSON 変換用ソースのゴミ収集日 PDF 名（`gomi.pdf`） |
-| `ICAL_JSONS_DIR` | iCal 取り込み用 JSON ディレクトリ（`sync_calendar` が `*.json` を読む） |
+| `ICAL_JSONS_DIR` | iCalJSON ディレクトリ（`ical_jsons/`。`sync_calendar` が `*.json` を読む） |
 | `ICAL_JSONS_GOMI` | ゴミ収集日の出力ファイル名（`gomi.json`） |
 | `GOOGLE_TOKEN_PATH` | OAuth トークン（`config/google_token.json`） |
 | `GOOGLE_ICAL_ID_KEY` / `GOOGLE_ICAL_SOURCE_KEY` | Calendar API の `extendedProperties.private` キー名 |
-| `TIMEZONE` / `DATETIME_FORMAT` | ical JSON のタイムゾーン・日時形式 |
+| `TIMEZONE` / `DATETIME_FORMAT` | iCalJSON のタイムゾーン・日時形式 |
 
 
 
@@ -119,11 +119,11 @@ flowchart LR
 ## JSON 仕様
 
 - 正本は本節の表と JSON 例とする
-- **ical JSON**（`ICAL_JSONS_DIR` 内）を正本とする。ゴミ収集日の自治体名・PDF URL 上書きは **`.env`**（`GOMI_REGION` / `GOMI_PDF_URL_OVERRIDE`）
+- **iCalJSON**（`ICAL_JSONS_DIR` 内）を正本とする。ゴミ収集日の自治体名・PDF URL 上書きは **`.env`**（`GOMI_REGION` / `GOMI_PDF_URL_OVERRIDE`）
 - 日時は常に **JST**。JSON に `timezone` は書かない
 
 
-### ical JSON（`ICAL_JSONS_DIR` 内の各ファイル）
+### iCalJSON（`ICAL_JSONS_DIR` 内の各ファイル）
 
 - `sync_calendar` はディレクトリ内の `*.json` を **ファイル名の辞書順** で読み、すべての `events[]` を合成する
 - 1 ファイル = 1 予定のまとまり（手動定義・ゴミ収集日由来・将来の自動生成など）
@@ -168,7 +168,7 @@ flowchart LR
 
 - 合成対象は `ICAL_JSONS_DIR` 内の **全 `*.json`** の `events[]` の和集合とする
 - 合成後に Google カレンダーへ一括反映する（段階的な部分更新は行わない）
-- ゴミ収集日由来の ical JSON は `fetch_gomi` が `ICAL_JSONS_DIR` / `ICAL_JSONS_GOMI` に書き出す
+- ゴミ収集日由来の iCalJSON は `fetch_gomi` が `ICAL_JSONS_DIR` / `ICAL_JSONS_GOMI` に書き出す
 
 
 ### JSON テンプレート
@@ -182,7 +182,7 @@ flowchart LR
 
 - エントリポイント: `python -m google_ical.commands.fetch_gomi`
 - 各段が成功したあとだけ次の段へ進む
-- 成功時、`ICAL_JSONS_DIR` / `ICAL_JSONS_GOMI` に ical JSON を書き出す。失敗時は既存ファイルを上書きしない
+- 成功時、`ICAL_JSONS_DIR` / `ICAL_JSONS_GOMI` に iCalJSON を書き出す。失敗時は既存ファイルを上書きしない
 
 
 ### 処理段
@@ -191,7 +191,7 @@ flowchart LR
 |----|------|------|--------|
 | 1. URL 調査 | **ChatGPT** | `GOMI_REGION` を渡し、ゴミ収集日 PDF の URL を調査する。返却は **URL 文字列のみ** を想定する。`GOMI_PDF_URL_OVERRIDE` があればスキップする | 非 `0`。以降の段は実行しない |
 | 2. PDF 取得 | プログラム | 得た URL から HTTP で PDF をダウンロードする | 非 `0`。以降の段は実行しない |
-| 3. PDF→JSON | **ChatGPT** | ダウンロードした PDF を渡し、予定 JSON（`events[]`）に変換する | 非 `0`。以降の段は実行しない |
+| 3. PDF→JSON | **ChatGPT** | ダウンロードした PDF を渡し、iCalJSON（`events[]`）に変換する | 非 `0`。以降の段は実行しない |
 | 4. 書き出し | プログラム | `source: gomi` を付与し、`ICAL_JSONS_DIR` / `ICAL_JSONS_GOMI` に保存する | — |
 
 - 段 1・3 が **AI の仕事**。段 2・4 はプログラム側
@@ -227,7 +227,7 @@ flowchart LR
 | PDF 処理 | 一般的な自治体 PDF を想定。サイズ上限・事前テキスト化の特別扱いはしない |
 | プロンプト | 添付 PDF からゴミ収集日を読み取り、`events[]` 相当の JSON 配列のみ返す。`all_day: true`、`end` は翌日 0:00、読み取れない予定は作らない。正本: `google_ical/content/openai_client.py` の `PDF_TO_EVENTS_PROMPT` |
 
-- **中間スキーマは設けない**。ChatGPT の返却をそのまま予定 JSON に近い形で受け取る
+- **中間スキーマは設けない**。ChatGPT の返却をそのまま iCalJSON に近い形で受け取る
 - `summary` は **単純な文字列**（例: `可燃ごみ`、`不燃ごみ`）。種別の固定一覧は設けない
 - 1 収集日 = `events[]` 1 件。`all_day: true` と日時はテンプレートどおり
 
@@ -247,7 +247,7 @@ flowchart LR
 - [内部 ID（自動生成）](#内部-id自動生成) を Google イベントの `extendedProperties.private` に `google_ical_id` として保存する
 - 各イベントの `google_ical_source` は、元 JSON ファイルの `source` を引き継ぐ
 - **削除対象**: 本リポが管理するイベントのうち、今回の合成結果に含まれないもの
-  - 予定 JSON から消えたイベント（同一内部 ID が合成結果に無い）
+  - iCalJSON から消えたイベント（同一内部 ID が合成結果に無い）
   - 合成結果に無い自動生成由来イベント（例: `google_ical_source: gomi`）
 - `gomi.json` が無い、または `fetch_gomi` を実行しなかった月は、ゴミ収集日由来イベントは合成結果に含まれない。次回 `sync_calendar` 成功時に既存の該当イベントは削除される
 - 本リポが付与していない `extendedProperties` のイベントは触らない
@@ -275,12 +275,12 @@ flowchart LR
 
 ### `fetch_gomi` のパイプライン
 
-- **設定読込 →（ChatGPT）URL 調査 → PDF 取得 →（ChatGPT）PDF→JSON → ical JSON 書き出し**
+- **設定読込 →（ChatGPT）URL 調査 → PDF 取得 →（ChatGPT）PDF→JSON → iCalJSON 書き出し**
 
 
 ### `sync_calendar` のパイプライン
 
-- **設定読込 → ical JSON ディレクトリ読込 → イベント合成 → Google 反映**
+- **設定読込 → iCalJSON ディレクトリ読込 → イベント合成 → Google 反映**
 
 
 ### 成功または失敗時の挙動
@@ -310,7 +310,7 @@ flowchart LR
 ## 単体テスト（最小仕様）
 
 - テストランナーは `pytest` を使う
-- 単体テストは責務単位で分ける（**ical JSON ディレクトリ読込**、**イベント合成**、**ゴミ収集日 PDF→ical JSON の正規化**）
+- 単体テストは責務単位で分ける（**iCalJSON ディレクトリ読込**、**イベント合成**、**ゴミ収集日 PDF→iCalJSON の正規化**）
 - 設定読込は必須環境変数不足で失敗し、原因が分かる日本語メッセージを返す
 - テストファイルは実行ファイル単位で分ける
 - テスト関数は対象関数ごとに分ける（1 テスト関数 = 1 関数の 1 観点）
@@ -337,15 +337,15 @@ flowchart LR
 |----------|------------------------|
 | `commands/auth/main.py` | Google OAuth 認可（`python -m google_ical.commands.auth`） |
 | `commands/fetch_gomi/main.py` | ゴミ収集日パイプライン本体（`python -m google_ical.commands.fetch_gomi`） |
-| `commands/sync_calendar/main.py` | 予定 JSON → Google 反映（`python -m google_ical.commands.sync_calendar`） |
+| `commands/sync_calendar/main.py` | iCalJSON → Google 反映（`python -m google_ical.commands.sync_calendar`） |
 | `cli.py` | コマンド共通の終了コード処理 |
 | `config.py` | コマンド別 `check_*_config`、固定値定数、`app_config` |
 | `exceptions.py` | 共通例外（`GoogleIcalError` 基底） |
 | `pipeline_log.py` | 段階ログ（stdout / stderr） |
-| `content/events/models.py` | 予定 JSON のドメイン型・内部 ID 生成 |
-| `content/events/schemas.py` | 予定 JSON の Pydantic 検証 |
-| `content/events/loader.py` | ical JSON ディレクトリ読込・合成 |
-| `content/events/writer.py` | ical JSON ファイル書き出し |
+| `content/events/models.py` | iCalJSON のドメイン型・内部 ID 生成 |
+| `content/events/schemas.py` | iCalJSON の Pydantic 検証 |
+| `content/events/loader.py` | iCalJSON ディレクトリ読込・合成 |
+| `content/events/writer.py` | iCalJSON ファイル書き出し |
 | `content/gomi/normalize.py` | ChatGPT 返却 events[] のゴミ収集日正規化 |
 | `content/gomi/pipeline.py` | `fetch_gomi` 各段処理 |
 | `content/pdf.py` | PDF HTTP 取得 |

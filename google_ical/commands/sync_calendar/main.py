@@ -1,4 +1,4 @@
-"""予定 JSON → Google カレンダー同期 CLI。"""
+"""iCalJSON → Google カレンダー同期 CLI。"""
 
 from __future__ import annotations
 
@@ -20,9 +20,9 @@ def main() -> int:
         ensure_token_file_exists(config.google_token_path)
         log_stage_success("設定読込")
 
-        log_stage_start("ical JSON 読込", detail=str(config.ical_jsons_dir))
+        log_stage_start("iCalJSON 読込", detail=str(config.ical_jsons_dir))
         events = load_merged_events(config.ical_jsons_dir)
-        log_stage_success("ical JSON 読込", detail=f"events={len(events)}")
+        log_stage_success("iCalJSON 読込", detail=f"events={len(events)}")
 
         log_stage_start("Google 反映", detail=f"calendar_id={config.google_calendar_id}")
         sync_events_to_google_calendar(events)

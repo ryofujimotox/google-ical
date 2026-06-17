@@ -62,7 +62,7 @@ def _build_desired_events(events: tuple[MergedEvent, ...]) -> dict[str, dict[str
     desired: dict[str, dict[str, Any]] = {}
     for event in events:
         if event.event_id in desired:
-            raise CalendarSyncError(f"予定 JSON の内部 ID が重複しています: {event.event_id}")
+            raise CalendarSyncError(f"iCalJSON の内部 ID が重複しています: {event.event_id}")
         desired[event.event_id] = _event_to_google_body(event)
     return desired
 

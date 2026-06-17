@@ -1,4 +1,4 @@
-"""予定 JSON のドメイン型と内部 ID 生成。"""
+"""iCalJSON のドメイン型と内部 ID 生成。"""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class CalendarEvent:
-    """予定 JSON の events[] 1 件。"""
+    """iCalJSON の events[] 1 件。"""
 
     summary: str
     start: str
@@ -19,7 +19,7 @@ class CalendarEvent:
 
 @dataclass(frozen=True)
 class EventsFile:
-    """予定 JSON ファイル 1 件分。"""
+    """iCalJSON ファイル 1 件分。"""
 
     source: str
     filename: str

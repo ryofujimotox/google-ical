@@ -15,13 +15,13 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 # env 不要の固定値（変更時はここを編集）
 JSON_SOURCE_DIR = _REPO_ROOT / "config" / "json_sources"        # JSON 変換用ソース（PDF 等）の置き場。fetch_gomi が取得 PDF を保存
 JSON_SOURCE_GOMI = "gomi.pdf"                                   # JSON 変換用ソースのゴミ収集日 PDF 名。fetch_gomi が保存
-ICAL_JSONS_DIR = _REPO_ROOT / "config" / "ical_jsons"           # iCal 取り込み用 JSON の置き場。sync_calendar が *.json を読む
+ICAL_JSONS_DIR = _REPO_ROOT / "config" / "ical_jsons"           # iCalJSON の置き場（ical_jsons/）。sync_calendar が *.json を読む
 ICAL_JSONS_GOMI = "gomi.json"                                   # fetch_gomi が PDF（JSON_SOURCE_GOMI）を JSON 化して書き出すファイル名
 GOOGLE_TOKEN_PATH = _REPO_ROOT / "config" / "google_token.json" # OAuth トークンの保存先。auth が認可後に書き出す
-GOOGLE_ICAL_ID_KEY = "google_ical_id"                           # ical JSON と Google イベントの対応付け用キー名。sync_calendar が付与
+GOOGLE_ICAL_ID_KEY = "google_ical_id"                           # iCalJSON と Google イベントの対応付け用キー名。sync_calendar が付与
 GOOGLE_ICAL_SOURCE_KEY = "google_ical_source"                   # 本リポ管理イベントの識別・削除判定用キー名。sync_calendar が付与
 TIMEZONE = "Asia/Tokyo"                                         # JST
-DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S"                           # ical JSON の日時文字列形式
+DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S"                           # iCalJSON の日時文字列形式
 
 __all__ = [
     "AppConfig",

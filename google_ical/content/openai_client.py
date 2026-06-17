@@ -25,7 +25,7 @@ PDF_URL_PROMPT = """\
 """
 
 PDF_TO_EVENTS_PROMPT = """\
-添付PDFからゴミ収集日を読み取り、予定JSONのevents配列だけをJSONで返してください。
+添付PDFからゴミ収集日を読み取り、iCalJSON の events 配列だけを JSON で返してください。
 
 対象月: {target_month}（JST）
 

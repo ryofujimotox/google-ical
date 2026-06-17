@@ -1,4 +1,4 @@
-"""予定 JSON の Pydantic スキーマ（検証専用）。"""
+"""iCalJSON の Pydantic スキーマ（検証専用）。"""
 
 from __future__ import annotations
 

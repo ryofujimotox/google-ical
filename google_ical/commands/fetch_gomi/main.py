@@ -1,4 +1,4 @@
-"""ゴミ収集日 PDF → 予定 JSON CLI。"""
+"""ゴミ収集日 PDF → iCalJSON CLI。"""
 
 from __future__ import annotations
 

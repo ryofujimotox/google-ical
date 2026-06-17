@@ -1,4 +1,4 @@
-"""ical JSON ディレクトリの読込とイベント合成。"""
+"""iCalJSON ディレクトリの読込とイベント合成。"""
 
 from __future__ import annotations
 
@@ -13,15 +13,15 @@ from google_ical.exceptions import EventsError
 
 
 def load_events_files(ical_jsons_dir: Path) -> tuple[EventsFile, ...]:
-    """ical JSON ディレクトリ内の *.json をファイル名順で読む。
+    """iCalJSON ディレクトリ内の *.json をファイル名順で読む。
     例: Path("config/ical_jsons") → (EventsFile(source="gomi", ...), EventsFile(source="manual", ...))
     """
     if not ical_jsons_dir.is_dir():
-        raise EventsError(f"ical JSON ディレクトリがありません: {ical_jsons_dir}")
+        raise EventsError(f"iCalJSON ディレクトリがありません: {ical_jsons_dir}")
 
     json_paths = sorted(ical_jsons_dir.glob("*.json"), key=lambda path: path.name)
     if not json_paths:
-        raise EventsError(f"ical JSON が 1 件もありません: {ical_jsons_dir}")
+        raise EventsError(f"iCalJSON が 1 件もありません: {ical_jsons_dir}")
 
     return tuple(_load_events_file(path) for path in json_paths)
 
@@ -61,12 +61,12 @@ def _load_events_file(path: Path) -> EventsFile:
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(raw, dict):
-            raise EventsError(f"ical JSON の形式が不正です: {path}")
+            raise EventsError(f"iCalJSON の形式が不正です: {path}")
         parsed = EventsFileSchema.model_validate(raw)
     except json.JSONDecodeError as exc:
-        raise EventsError(f"ical JSON の解析に失敗しました: {path}") from exc
+        raise EventsError(f"iCalJSON の解析に失敗しました: {path}") from exc
     except ValidationError as exc:
-        raise EventsError(f"ical JSON の形式が不正です: {path}") from exc
+        raise EventsError(f"iCalJSON の形式が不正です: {path}") from exc
 
     events = tuple(
         CalendarEvent(
