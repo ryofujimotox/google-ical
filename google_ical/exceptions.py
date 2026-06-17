@@ -12,7 +12,7 @@ class ConfigError(GoogleIcalError, ValueError):
 
 
 class EventsError(GoogleIcalError, ValueError):
-    """予定 JSON の読込・検証失敗。"""
+    """iCalJSON の読込・検証失敗。"""
 
 
 class GomiError(GoogleIcalError, RuntimeError):

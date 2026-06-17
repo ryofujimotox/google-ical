@@ -14,7 +14,7 @@
 | 配置 | `/home/scripts/google-ical/` に配置する | 初回の取得は「セットアップ」の `git clone` |
 | 実行 | **月 1 回** cron で `fetch_gomi` → `sync_calendar` を連続実行 | 手動実行は「動作確認」。具体時刻は下記「cron 登録」 |
 | 秘密情報 | `.env` | [AGENTS.md](../AGENTS.md) の「設定（環境変数）」。作成・設定は「環境変数（`.env`）」 |
-| Google トークン | `config/google_token.json` | Git に含めない。初回は「Google 認証」 |
+| Google トークン | `data/auth/token.json` | Git に含めない。初回は「Google 認証」 |
 | Python | ホスト **3.12**（`.python-version`） | `python3.12` が無いときは「Python 3.12 のインストール」 |
 
 
@@ -57,8 +57,8 @@ cd /home/scripts/google-ical
 echo $?
 ```
 
-- **終了コード 0** が出たら OK（`config/google_token.json` が `0600` 権限で作成される）
-- ブラウザが使えないサーバーでは、手元で `auth` してできた `config/google_token.json` をサーバーへコピーしてもよい
+- **終了コード 0** が出たら OK（`data/auth/token.json` が `0600` 権限で作成される）
+- ブラウザが使えないサーバーでは、手元で `auth` してできた `data/auth/token.json` をサーバーへコピーしてもよい
 - サーバー上で認可コード入力を使う場合: SSH 接続時は自動でコンソールフローに切り替わる。明示するなら `.env` に `GOOGLE_ICAL_OAUTH_CONSOLE=1` を設定する
 
 

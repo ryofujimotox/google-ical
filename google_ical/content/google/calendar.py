@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
-from google_ical.constants import GOOGLE_ICAL_ID_KEY, GOOGLE_ICAL_SOURCE_KEY
 from google_ical.exceptions import CalendarSyncError
 
 
@@ -13,7 +12,9 @@ class CalendarService(Protocol):
 
 
 def build_calendar_service(credentials: object) -> CalendarService:
-    """OAuth 資格情報から Calendar API クライアントを作る。"""
+    """OAuth 資格情報から Calendar API クライアントを作る。
+    例: Credentials(...) → calendar v3 service
+    """
     try:
         from googleapiclient.discovery import build
     except ModuleNotFoundError as exc:
@@ -31,8 +32,12 @@ def list_managed_events(
     service: CalendarService,
     *,
     calendar_id: str,
+    google_ical_id_key: str,
+    google_ical_source_key: str,
 ) -> dict[str, dict[str, Any]]:
-    """google_ical_id を持つ本リポ管理の既存予定をすべて取得する。"""
+    """本リポ管理の既存予定を google_ical_id キー付きで取得する。
+    例: → {"a1b2...": {"id": "google_evt_id", "summary": "可燃ごみ", ...}, ...}
+    """
     managed: dict[str, dict[str, Any]] = {}
     try:
         request = service.events().list(
@@ -43,8 +48,8 @@ def list_managed_events(
             response = request.execute()
             for item in response.get("items", []):
                 private = item.get("extendedProperties", {}).get("private", {})
-                managed_id = private.get(GOOGLE_ICAL_ID_KEY)
-                if managed_id and private.get(GOOGLE_ICAL_SOURCE_KEY):
+                managed_id = private.get(google_ical_id_key)
+                if managed_id and private.get(google_ical_source_key):
                     managed[managed_id] = item
             request = service.events().list_next(request, response)
     except Exception as exc:
@@ -61,7 +66,9 @@ def upsert_event(
     body: dict[str, Any],
     existing: dict[str, Any] | None,
 ) -> str:
-    """既存があれば patch、なければ insert し、Google 側 ID を返す。"""
+    """Google カレンダーへイベントを作成または更新する。
+    existing あり: patch。なし: insert。戻り値は Google 側 event ID。
+    """
     try:
         if existing:
             response = (
@@ -83,7 +90,7 @@ def upsert_event(
 
 
 def delete_event(service: CalendarService, *, calendar_id: str, event_id: str) -> None:
-    """入力から消えた管理予定を削除する。"""
+    """JSON から消えた管理予定を Google カレンダーから削除する。"""
     try:
         service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
     except Exception as exc:

@@ -47,12 +47,12 @@
 |------|-------|------------|
 | Docs | 📚 | `📚 Docs: デプロイ手順を追加` |
 | Chore | 🔧 | `🔧 Chore: Python実行の土台を追加` |
-| Feat | ✨ | `✨ Feat: 予定JSON読込を追加` |
+| Feat | ✨ | `✨ Feat: iCalJSON 読込を追加` |
 | Fix | 🐛 | `🐛 Fix: 内部ID生成の不具合` |
 | Update | 🎨 | `🎨 Update: ゴミ収集日JSONの書き出し形式を調整` |
 | Refactor | ♻️ | `♻️ Refactor: Google同期をモジュール分割` |
 | Perf | 🐎 | `🐎 Perf: PDF取得を並列化` |
-| Test | 🚨 | `🚨 Test: 予定JSON合成を追加` |
+| Test | 🚨 | `🚨 Test: iCalJSON 合成を追加` |
 | Chore | 🗑️ | `🗑️ Chore: 未使用の設定キーを削除` |
 | Chore | 💩 | `💩 Chore: 旧環境変数を非推奨化` |
 | Chore | 🔖 | `🔖 Chore: v0.1.0 をタグ付け` |

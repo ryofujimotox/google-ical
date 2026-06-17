@@ -7,7 +7,7 @@ import os
 import sys
 from pathlib import Path
 
-from google_ical.constants import GOOGLE_TOKEN_PATH
+from google_ical.config import OAUTH_TOKEN_PATH
 from google_ical.exceptions import GoogleAuthError
 
 SCOPES = ("https://www.googleapis.com/auth/calendar",)
@@ -15,7 +15,9 @@ _CONSOLE_REDIRECT_URI = "http://localhost"
 
 
 def should_use_console_oauth_flow() -> bool:
-    """ブラウザを開けない環境では、localhost 待ちではなく認可コード入力へ切り替える。"""
+    """認可コード入力フローを使うか判定する。
+    GOOGLE_ICAL_OAUTH_CONSOLE=1、または SSH / headless Linux なら True。
+    """
     value = os.getenv("GOOGLE_ICAL_OAUTH_CONSOLE", "").strip().lower()
     if value in {"1", "true", "yes", "on"}:
         return True
@@ -29,10 +31,16 @@ def should_use_console_oauth_flow() -> bool:
 
 
 def token_path() -> Path:
-    return GOOGLE_TOKEN_PATH
+    """OAuth トークンファイルのパスを返す。
+    例: → Path("data/auth/token.json")
+    """
+    return OAUTH_TOKEN_PATH
 
 
 def ensure_token_file_exists(path: Path | None = None) -> Path:
+    """トークンファイルの存在を確認する。無ければ GoogleAuthError。
+    例: → Path("data/auth/token.json")
+    """
     resolved = path or token_path()
     if not resolved.is_file():
         raise GoogleAuthError(
@@ -42,6 +50,7 @@ def ensure_token_file_exists(path: Path | None = None) -> Path:
 
 
 def load_token_json(path: Path | None = None) -> dict[str, object]:
+    """保存済みトークン JSON を読み込む。"""
     resolved = ensure_token_file_exists(path)
     try:
         return json.loads(resolved.read_text(encoding="utf-8"))
@@ -50,6 +59,9 @@ def load_token_json(path: Path | None = None) -> dict[str, object]:
 
 
 def save_token_json(token_data: dict[str, object], path: Path | None = None) -> Path:
+    """トークン JSON を原子的に保存する（権限 0600）。
+    例: {"token": ...} → data/auth/token.json
+    """
     resolved = path or token_path()
     resolved.parent.mkdir(parents=True, exist_ok=True)
     content = json.dumps(token_data, ensure_ascii=False, indent=2) + "\n"
@@ -69,7 +81,9 @@ def save_token_json(token_data: dict[str, object], path: Path | None = None) -> 
 
 
 def load_calendar_credentials(path: Path | None = None) -> object:
-    """保存済みトークンを読み、必要なら refresh して Credentials を返す。"""
+    """保存済みトークンから Credentials を返す（期限切れなら refresh）。
+    例: data/auth/token.json → google.oauth2.credentials.Credentials
+    """
     from google.auth.transport.requests import Request
     from google.oauth2.credentials import Credentials
 
@@ -98,7 +112,10 @@ def load_calendar_credentials(path: Path | None = None) -> object:
 
 
 def run_oauth_flow(*, client_id: str, client_secret: str, token_path: Path) -> Path:
-    """ブラウザ認可を試し、headless 環境では認可コード入力で認可する。"""
+    """Google OAuth 認可を実行し、トークンを保存する。
+    ブラウザ認可を試し、headless なら認可コード入力へ切り替える。
+    例: → Path("data/auth/token.json")
+    """
     from google_auth_oauthlib.flow import InstalledAppFlow
 
     flow = InstalledAppFlow.from_client_config(

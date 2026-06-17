@@ -1,16 +1,13 @@
-"""ゴミ収集日 PDF → 予定 JSON CLI。"""
+"""ゴミ収集日 PDF → iCalJSON CLI。"""
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from google_ical.cli import run_command
-from google_ical.config import load_config
+from google_ical.config import app_config as config, check_fetch_gomi_config
 from google_ical.content.events.writer import save_events_file
-from google_ical.content.gomi.config import load_gomi_config, resolve_gomi_output_path
 from google_ical.content.gomi.normalize import current_jst_target_month
 from google_ical.content.gomi.pipeline import convert_gomi_pdf, fetch_gomi_pdf_url
-from google_ical.content.pdf import download_pdf
+from google_ical.content.pdf import download_pdf, save_pdf
 from google_ical.pipeline_log import log_info, log_stage_start, log_stage_success
 
 
@@ -21,30 +18,36 @@ def main() -> int:
         nonlocal output_path
 
         log_stage_start("設定読込")
-        config = load_config()
-        gomi_config = load_gomi_config(config.gomi_config_path)
-        output_path = str(resolve_gomi_output_path(config.events_json_dir, gomi_config.output_file))
+        check_fetch_gomi_config()
+        output_path = str(config.ical_jsons_gomi)
         log_stage_success("設定読込")
 
-        if gomi_config.pdf_url_override:
+        if config.gomi_pdf_url_override:
             url_detail = "pdf_url_override を使用"
         else:
-            url_detail = f"region={gomi_config.region}"
+            url_detail = f"region={config.gomi_region}"
         log_stage_start("PDF URL 取得", detail=url_detail)
-        pdf_url = fetch_gomi_pdf_url(config, gomi_config)
+        pdf_url = fetch_gomi_pdf_url()
         log_stage_success("PDF URL 取得", detail=pdf_url)
 
         log_stage_start("PDF ダウンロード", detail=pdf_url)
         pdf_bytes = download_pdf(pdf_url)
         log_stage_success("PDF ダウンロード", detail=f"bytes={len(pdf_bytes)}")
 
+        log_stage_start("PDF 保存", detail=str(config.sources_gomi_pdf))
+        save_pdf(config.sources_gomi_pdf, pdf_bytes)
+        log_stage_success("PDF 保存", detail=str(config.sources_gomi_pdf))
+
         log_stage_start("PDF→JSON 変換")
         target_month = current_jst_target_month()
-        events = convert_gomi_pdf(config, pdf_bytes, target_month=target_month)
+        events = convert_gomi_pdf(pdf_bytes, target_month=target_month)
         log_stage_success("PDF→JSON 変換", detail=f"events={len(events)} month={target_month}")
 
         log_stage_start("JSON 保存", detail=output_path)
-        save_events_file(Path(output_path), source="gomi", events=events)
+        save_events_file(
+            config.ical_jsons_gomi,
+            events=events,
+        )
         log_stage_success("JSON 保存", detail=output_path)
 
     code = run_command(_run)

@@ -25,7 +25,7 @@ PDF_URL_PROMPT = """\
 """
 
 PDF_TO_EVENTS_PROMPT = """\
-添付PDFからゴミ収集日を読み取り、予定JSONのevents配列だけをJSONで返してください。
+添付PDFからゴミ収集日を読み取り、iCalJSON の events 配列だけを JSON で返してください。
 
 対象月: {target_month}（JST）
 
@@ -51,9 +51,8 @@ PDF_TO_EVENTS_PROMPT = """\
 
 
 def investigate_gomi_pdf_url(*, region: str, api_key: str, model: str) -> str:
-    """地域名を渡し、自治体公式のゴミ収集日PDF URLだけを返す。
-
-    例: region="東京都〇〇区" → "https://example.jp/gomi.pdf"
+    """自治体名からゴミ収集日 PDF の URL を ChatGPT で調査する。
+    例: region="東京都〇〇区" → "https://www.city.example.jp/gomi.pdf"
     """
     region = region.strip()
     if not region:
@@ -83,7 +82,9 @@ def convert_pdf_to_events(
     model: str,
     target_month: str,
 ) -> tuple[CalendarEvent, ...]:
-    """PDFバイト列を渡し、対象月のゴミ収集日 CalendarEvent タプルへ正規化する。"""
+    """PDF を ChatGPT で読み取り、対象月の CalendarEvent 列へ正規化する。
+    例: pdf_bytes, target_month="2026-06" → (CalendarEvent("可燃ごみ", ...), ...)
+    """
     if not pdf_bytes:
         raise OpenAIClientError("PDF が空です")
 
@@ -113,7 +114,10 @@ def convert_pdf_to_events(
         if uploaded_id:
             _delete_uploaded_file(client, uploaded_id)
 
-    return normalize_gomi_events(_extract_output_text(response), target_month=target_month)
+    return normalize_gomi_events(
+        _extract_output_text(response),
+        target_month=target_month,
+    )
 
 
 def _create_openai_client(api_key: str) -> object:

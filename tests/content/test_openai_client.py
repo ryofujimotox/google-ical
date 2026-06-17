@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-from google_ical.constants import DEFAULT_OPENAI_MODEL
 from google_ical.content.openai_client import (
     _create_openai_client,
     _extract_output_text,
@@ -86,7 +85,7 @@ def test_investigate_gomi_pdf_url_uses_client_without_retries(monkeypatch: pytes
 
     monkeypatch.setattr("openai.OpenAI", FakeOpenAI)
 
-    url = investigate_gomi_pdf_url(region="東京都〇〇区", api_key="test-key", model=DEFAULT_OPENAI_MODEL)
+    url = investigate_gomi_pdf_url(region="東京都〇〇区", api_key="test-key", model="gpt-4.1-mini")
 
     assert url == "https://example.jp/gomi.pdf"
     assert captured_client["max_retries"] == 0

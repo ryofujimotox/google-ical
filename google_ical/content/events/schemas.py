@@ -1,4 +1,4 @@
-"""予定 JSON の Pydantic スキーマ（検証専用）。"""
+"""iCalJSON の Pydantic スキーマ（検証専用）。"""
 
 from __future__ import annotations
 
@@ -6,7 +6,6 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from google_ical.constants import DEFAULT_EVENT_SOURCE
 from google_ical.content.events.datetime_parse import format_jst_datetime, parse_strict_jst_datetime
 
 
@@ -50,15 +49,6 @@ class EventRecordSchema(BaseModel):
 
 
 class EventsFileSchema(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
-    source: str = DEFAULT_EVENT_SOURCE
     events: list[EventRecordSchema]
-
-    @field_validator("source")
-    @classmethod
-    def validate_source_not_blank(cls, value: str) -> str:
-        stripped = value.strip()
-        if not stripped:
-            raise ValueError("source は空文字列にできません")
-        return stripped

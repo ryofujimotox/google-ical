@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from google_ical.config import GOOGLE_ICAL_ID_KEY, GOOGLE_ICAL_SOURCE_KEY
 from google_ical.content.google.calendar import list_managed_events, upsert_event
 
 
@@ -103,7 +104,12 @@ def test_list_managed_events_collects_all_google_ical_events() -> None:
         ),
     )
 
-    managed = list_managed_events(service, calendar_id="cal-id")
+    managed = list_managed_events(
+        service,
+        calendar_id="cal-id",
+        google_ical_id_key=GOOGLE_ICAL_ID_KEY,
+        google_ical_source_key=GOOGLE_ICAL_SOURCE_KEY,
+    )
 
     assert set(managed) == {"hash-1", "hash-2"}
     assert managed["hash-1"]["id"] == "google-1"
@@ -114,7 +120,12 @@ def test_list_managed_events_does_not_expand_recurring_instances() -> None:
     events = _FakeEventsResource(responses=[{"items": []}])
     service = _FakeService(events)
 
-    list_managed_events(service, calendar_id="cal-id")
+    list_managed_events(
+        service,
+        calendar_id="cal-id",
+        google_ical_id_key=GOOGLE_ICAL_ID_KEY,
+        google_ical_source_key=GOOGLE_ICAL_SOURCE_KEY,
+    )
 
     assert len(events.list_calls) == 1
     assert "singleEvents" not in events.list_calls[0]

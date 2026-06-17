@@ -1,4 +1,4 @@
-"""予定 JSON ファイルの書き出し。"""
+"""iCalJSON ファイルの書き出し。"""
 
 from __future__ import annotations
 
@@ -9,10 +9,12 @@ from pathlib import Path
 from google_ical.content.events.models import CalendarEvent
 
 
-def save_events_file(path: Path, *, source: str, events: tuple[CalendarEvent, ...]) -> None:
+def save_events_file(path: Path, *, events: tuple[CalendarEvent, ...]) -> None:
+    """iCalJSON を原子的に書き出す。
+    例: path=Path("data/ical_jsons/gomi.json") → {"events":[...]}
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
-        "source": source,
         "events": [
             {
                 "summary": event.summary,
