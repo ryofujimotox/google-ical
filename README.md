@@ -84,7 +84,7 @@ python -m google_ical.commands.sync_calendar
 ## 設計の要点
 
 - **fetch_gomi → sync_calendar** の順で実行（月 1 回 cron）
-- iCalJSON は **`config/ical_jsons/` 内の全 `*.json`** を合成して反映
+- iCalJSON は **`data/ical_jsons/` 内の全 `*.json`** を合成して反映
 - 内部 ID は **SHA-256**（ファイル名 + 予定内容）で冪等に作成・更新・削除
 - 詳細な同期ルールは [AGENTS.md](./AGENTS.md) の「Google カレンダー連携」を参照
 
@@ -116,10 +116,11 @@ google_ical/
     openai_client.py       # ChatGPT（URL 調査・PDF→JSON）
     pdf.py                 # PDF HTTP 取得
 
-config/
-  json_sources/            # JSON 変換用ソース（fetch_gomi が保存する PDF 等）
+data/
+  sources/                 # 変換元ソース（fetch_gomi が保存する PDF 等）
   ical_jsons/              # iCalJSON テンプレート（gomi.json / sample.json）
-  google_token.json        # OAuth トークン（Git に含めない）
+  auth/
+    token.json             # OAuth トークン（Git に含めない）
 
 tests/                     # 単体テスト（google_ical/ と同じ階層）
   content/

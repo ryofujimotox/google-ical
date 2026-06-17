@@ -31,7 +31,7 @@ def download_pdf(url: str, *, timeout: float = 60.0) -> bytes:
 
 def save_pdf(path: Path, content: bytes) -> None:
     """PDF バイト列を JSON 変換用ソースとして原子的にディスクへ書き出す。
-    例: Path("config/json_sources/gomi.pdf"), b"%PDF..." → ファイル作成
+    例: Path("data/sources/gomi.pdf"), b"%PDF..." → ファイル作成
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = path.with_name(f".{path.name}.tmp")

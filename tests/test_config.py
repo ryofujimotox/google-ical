@@ -5,11 +5,11 @@ from __future__ import annotations
 import pytest
 
 from google_ical.config import (
-    JSON_SOURCE_DIR,
-    JSON_SOURCE_GOMI,
+    SOURCES_DIR,
+    SOURCE_GOMI_PDF,
     ICAL_JSONS_DIR,
     ICAL_JSONS_GOMI,
-    GOOGLE_TOKEN_PATH,
+    OAUTH_TOKEN_PATH,
     app_config as config,
     check_auth_config,
     check_fetch_gomi_config,
@@ -72,7 +72,7 @@ def test_check_auth_config_succeeds_with_google_oauth_only(monkeypatch: pytest.M
 
     assert config.google_client_id == "client-id"
     assert config.google_client_secret == "client-secret"
-    assert config.google_token_path == GOOGLE_TOKEN_PATH
+    assert config.oauth_token_path == OAUTH_TOKEN_PATH
 
 
 def test_check_auth_config_fails_when_google_client_id_missing(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
@@ -104,8 +104,8 @@ def test_check_fetch_gomi_config_succeeds_with_all_required_env(monkeypatch: pyt
     assert config.openai_api_key == "openai-key"
     assert config.openai_model == "gpt-4.1-mini"
     assert config.gomi_region == "東京都〇〇区"
-    assert config.json_source_dir == JSON_SOURCE_DIR
-    assert config.json_source_gomi == JSON_SOURCE_DIR / JSON_SOURCE_GOMI
+    assert config.sources_dir == SOURCES_DIR
+    assert config.sources_gomi_pdf == SOURCES_DIR / SOURCE_GOMI_PDF
     assert config.ical_jsons_dir == ICAL_JSONS_DIR
     assert config.ical_jsons_gomi == ICAL_JSONS_DIR / ICAL_JSONS_GOMI
     assert config.gomi_pdf_url_override is None
@@ -162,4 +162,4 @@ def test_check_sync_calendar_config_succeeds_without_fetch_gomi_env(
     assert config.google_client_id == "client-id"
     assert config.google_client_secret == "client-secret"
     assert config.ical_jsons_dir == ICAL_JSONS_DIR
-    assert config.google_token_path == GOOGLE_TOKEN_PATH
+    assert config.oauth_token_path == OAUTH_TOKEN_PATH

@@ -1,6 +1,6 @@
 .venv/
 .env
-config/google_token.json
+data/auth/token.json
 __pycache__/
 *.pyc
 .DS_Store

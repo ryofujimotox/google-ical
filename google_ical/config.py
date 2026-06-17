@@ -13,27 +13,29 @@ from google_ical.exceptions import ConfigError
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # env 不要の固定値（変更時はここを編集）
-JSON_SOURCE_DIR = _REPO_ROOT / "config" / "json_sources"        # JSON 変換用ソース（PDF 等）の置き場。fetch_gomi が取得 PDF を保存
-JSON_SOURCE_GOMI = "gomi.pdf"                                   # JSON 変換用ソースのゴミ収集日 PDF 名。fetch_gomi が保存
-ICAL_JSONS_DIR = _REPO_ROOT / "config" / "ical_jsons"           # iCalJSON の置き場（ical_jsons/）。sync_calendar が *.json を読む
-ICAL_JSONS_GOMI = "gomi.json"                                   # fetch_gomi が PDF（JSON_SOURCE_GOMI）を JSON 化して書き出すファイル名
-GOOGLE_TOKEN_PATH = _REPO_ROOT / "config" / "google_token.json" # OAuth トークンの保存先。auth が認可後に書き出す
-GOOGLE_ICAL_ID_KEY = "google_ical_id"                           # iCalJSON と Google イベントの対応付け用キー名。sync_calendar が付与
-GOOGLE_ICAL_SOURCE_KEY = "google_ical_source"                   # 本リポ管理イベントの判別用（google_ical_id とセットで必須）
-TIMEZONE = "Asia/Tokyo"                                         # JST
-DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S"                           # iCalJSON の日時文字列形式
+DATA_DIR = _REPO_ROOT / "data"
+SOURCES_DIR = DATA_DIR / "sources"                               # fetch_gomi が取得 PDF を保存
+SOURCE_GOMI_PDF = "gomi.pdf"                                     # ゴミ収集日 PDF 名
+ICAL_JSONS_DIR = DATA_DIR / "ical_jsons"                         # iCalJSON の置き場。sync_calendar が *.json を読む
+ICAL_JSONS_GOMI = "gomi.json"                                    # fetch_gomi の iCalJSON 出力ファイル名
+OAUTH_TOKEN_PATH = DATA_DIR / "auth" / "token.json"              # OAuth トークン。auth が認可後に書き出す
+GOOGLE_ICAL_ID_KEY = "google_ical_id"                            # iCalJSON と Google イベントの対応付け用キー名。sync_calendar が付与
+GOOGLE_ICAL_SOURCE_KEY = "google_ical_source"                    # 本リポ管理イベントの判別用（google_ical_id とセットで必須）
+TIMEZONE = "Asia/Tokyo"                                          # JST
+DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S"                            # iCalJSON の日時文字列形式。
 
 __all__ = [
     "AppConfig",
     "ConfigError",
+    "DATA_DIR",
     "DATETIME_FORMAT",
-    "JSON_SOURCE_DIR",
-    "JSON_SOURCE_GOMI",
+    "SOURCES_DIR",
+    "SOURCE_GOMI_PDF",
     "ICAL_JSONS_DIR",
     "ICAL_JSONS_GOMI",
     "GOOGLE_ICAL_ID_KEY",
     "GOOGLE_ICAL_SOURCE_KEY",
-    "GOOGLE_TOKEN_PATH",
+    "OAUTH_TOKEN_PATH",
     "TIMEZONE",
     "app_config",
     "check_auth_config",
@@ -64,13 +66,13 @@ class AppConfig:
     google_client_id: str
     google_client_secret: str
     google_calendar_id: str
-    google_token_path: Path
+    oauth_token_path: Path
     openai_api_key: str
     openai_model: str
     gomi_region: str | None
     gomi_pdf_url_override: str | None
-    json_source_dir: Path
-    json_source_gomi: Path
+    sources_dir: Path
+    sources_gomi_pdf: Path
     ical_jsons_dir: Path
     ical_jsons_gomi: Path
 
@@ -122,13 +124,13 @@ def _build_app_config() -> AppConfig:
         google_client_id=_read_env("GOOGLE_CLIENT_ID"),
         google_client_secret=_read_env("GOOGLE_CLIENT_SECRET"),
         google_calendar_id=_read_env("GOOGLE_CALENDAR_ID"),
-        google_token_path=GOOGLE_TOKEN_PATH,
+        oauth_token_path=OAUTH_TOKEN_PATH,
         openai_api_key=_read_env("OPENAI_API_KEY"),
         openai_model=_read_env("OPENAI_MODEL"),
         gomi_region=gomi_region,
         gomi_pdf_url_override=gomi_pdf_url_override,
-        json_source_dir=JSON_SOURCE_DIR,
-        json_source_gomi=JSON_SOURCE_DIR / JSON_SOURCE_GOMI,
+        sources_dir=SOURCES_DIR,
+        sources_gomi_pdf=SOURCES_DIR / SOURCE_GOMI_PDF,
         ical_jsons_dir=ICAL_JSONS_DIR,
         ical_jsons_gomi=ICAL_JSONS_DIR / ICAL_JSONS_GOMI,
     )

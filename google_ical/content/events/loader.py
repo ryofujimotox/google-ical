@@ -14,7 +14,7 @@ from google_ical.exceptions import EventsError
 
 def event_source_from_json_path(path: Path) -> str:
     """JSON ファイル名（拡張子なし）から google_ical_source 用ラベルを返す。
-    例: Path("config/ical_jsons/gomi.json") → "gomi"
+    例: Path("data/ical_jsons/gomi.json") → "gomi"
     """
     if path.suffix != ".json":
         raise EventsError(f"JSON ファイル名から source を決められません: {path}")
@@ -26,7 +26,7 @@ def event_source_from_json_path(path: Path) -> str:
 
 def load_events_files(ical_jsons_dir: Path) -> tuple[EventsFile, ...]:
     """iCalJSON ディレクトリ内の *.json をファイル名順で読む。
-    例: Path("config/ical_jsons") → (EventsFile(source="gomi", ...), EventsFile(source="sample", ...))
+    例: Path("data/ical_jsons") → (EventsFile(source="gomi", ...), EventsFile(source="sample", ...))
     *.json が無いときは () を返す。
     """
     if not ical_jsons_dir.is_dir():
@@ -38,7 +38,7 @@ def load_events_files(ical_jsons_dir: Path) -> tuple[EventsFile, ...]:
 
 def load_merged_events(ical_jsons_dir: Path) -> tuple[MergedEvent, ...]:
     """全 JSON の events[] を合成し、内部 ID を付与する。
-    例: Path("config/ical_jsons") → (MergedEvent(event_id="a1b2...", summary="可燃ごみ", ...), ...)
+    例: Path("data/ical_jsons") → (MergedEvent(event_id="a1b2...", summary="可燃ごみ", ...), ...)
     """
     merged: list[MergedEvent] = []
     seen_ids: dict[str, str] = {}
@@ -73,7 +73,7 @@ def load_merged_events(ical_jsons_dir: Path) -> tuple[MergedEvent, ...]:
 
 def _load_events_file(path: Path) -> EventsFile:
     """1 ファイルを検証して EventsFile に変換する。
-    例: Path("config/ical_jsons/gomi.json") → EventsFile(source="gomi", filename="gomi.json", ...)
+    例: Path("data/ical_jsons/gomi.json") → EventsFile(source="gomi", filename="gomi.json", ...)
     """
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))

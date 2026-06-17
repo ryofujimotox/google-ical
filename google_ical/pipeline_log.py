@@ -25,7 +25,7 @@ def log_stage_start(stage: str, *, detail: str = "") -> None:
 
 def log_stage_success(stage: str, *, detail: str = "") -> None:
     """段階成功ログを出す。
-    例: log_stage_success("JSON 保存", detail="config/ical_jsons/gomi.json") → "JSON 保存 成功: ..."
+    例: log_stage_success("JSON 保存", detail="data/ical_jsons/gomi.json") → "JSON 保存 成功: ..."
     """
     suffix = f": {detail}" if detail else ""
     log_info(f"{stage} 成功{suffix}")

@@ -11,7 +11,7 @@ from google_ical.content.events.models import CalendarEvent
 
 def save_events_file(path: Path, *, events: tuple[CalendarEvent, ...]) -> None:
     """iCalJSON を原子的に書き出す。
-    例: path=Path("config/ical_jsons/gomi.json") → {"events":[...]}
+    例: path=Path("data/ical_jsons/gomi.json") → {"events":[...]}
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {

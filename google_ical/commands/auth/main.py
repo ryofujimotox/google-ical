@@ -17,9 +17,9 @@ def main() -> int:
         saved_path = run_oauth_flow(
             client_id=config.google_client_id,
             client_secret=config.google_client_secret,
-            token_path=config.google_token_path,
+            token_path=config.oauth_token_path,
         )
         log_stage_success("Google 認可", detail=str(saved_path))
-        log_info(f"認可完了: トークンを保存しました ({config.google_token_path})")
+        log_info(f"認可完了: トークンを保存しました ({config.oauth_token_path})")
 
     return run_command(_run)

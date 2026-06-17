@@ -7,7 +7,7 @@ import os
 import sys
 from pathlib import Path
 
-from google_ical.config import GOOGLE_TOKEN_PATH
+from google_ical.config import OAUTH_TOKEN_PATH
 from google_ical.exceptions import GoogleAuthError
 
 SCOPES = ("https://www.googleapis.com/auth/calendar",)
@@ -32,14 +32,14 @@ def should_use_console_oauth_flow() -> bool:
 
 def token_path() -> Path:
     """OAuth トークンファイルのパスを返す。
-    例: → Path("config/google_token.json")
+    例: → Path("data/auth/token.json")
     """
-    return GOOGLE_TOKEN_PATH
+    return OAUTH_TOKEN_PATH
 
 
 def ensure_token_file_exists(path: Path | None = None) -> Path:
     """トークンファイルの存在を確認する。無ければ GoogleAuthError。
-    例: → Path("config/google_token.json")
+    例: → Path("data/auth/token.json")
     """
     resolved = path or token_path()
     if not resolved.is_file():
@@ -60,7 +60,7 @@ def load_token_json(path: Path | None = None) -> dict[str, object]:
 
 def save_token_json(token_data: dict[str, object], path: Path | None = None) -> Path:
     """トークン JSON を原子的に保存する（権限 0600）。
-    例: {"token": ...} → config/google_token.json
+    例: {"token": ...} → data/auth/token.json
     """
     resolved = path or token_path()
     resolved.parent.mkdir(parents=True, exist_ok=True)
@@ -82,7 +82,7 @@ def save_token_json(token_data: dict[str, object], path: Path | None = None) -> 
 
 def load_calendar_credentials(path: Path | None = None) -> object:
     """保存済みトークンから Credentials を返す（期限切れなら refresh）。
-    例: config/google_token.json → google.oauth2.credentials.Credentials
+    例: data/auth/token.json → google.oauth2.credentials.Credentials
     """
     from google.auth.transport.requests import Request
     from google.oauth2.credentials import Credentials
@@ -114,7 +114,7 @@ def load_calendar_credentials(path: Path | None = None) -> object:
 def run_oauth_flow(*, client_id: str, client_secret: str, token_path: Path) -> Path:
     """Google OAuth 認可を実行し、トークンを保存する。
     ブラウザ認可を試し、headless なら認可コード入力へ切り替える。
-    例: → Path("config/google_token.json")
+    例: → Path("data/auth/token.json")
     """
     from google_auth_oauthlib.flow import InstalledAppFlow
 

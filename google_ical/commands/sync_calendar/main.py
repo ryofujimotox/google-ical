@@ -17,7 +17,7 @@ def main() -> int:
         nonlocal summary
         log_stage_start("設定読込")
         check_sync_calendar_config()
-        ensure_token_file_exists(config.google_token_path)
+        ensure_token_file_exists(config.oauth_token_path)
         log_stage_success("設定読込")
 
         log_stage_start("iCalJSON 読込", detail=str(config.ical_jsons_dir))

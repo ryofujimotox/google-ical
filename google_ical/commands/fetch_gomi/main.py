@@ -34,9 +34,9 @@ def main() -> int:
         pdf_bytes = download_pdf(pdf_url)
         log_stage_success("PDF ダウンロード", detail=f"bytes={len(pdf_bytes)}")
 
-        log_stage_start("PDF 保存", detail=str(config.json_source_gomi))
-        save_pdf(config.json_source_gomi, pdf_bytes)
-        log_stage_success("PDF 保存", detail=str(config.json_source_gomi))
+        log_stage_start("PDF 保存", detail=str(config.sources_gomi_pdf))
+        save_pdf(config.sources_gomi_pdf, pdf_bytes)
+        log_stage_success("PDF 保存", detail=str(config.sources_gomi_pdf))
 
         log_stage_start("PDF→JSON 変換")
         target_month = current_jst_target_month()

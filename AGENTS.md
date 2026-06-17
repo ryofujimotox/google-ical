@@ -74,11 +74,12 @@ flowchart LR
 
 | 定数 | 内容 |
 |------|------|
-| `JSON_SOURCE_DIR` | JSON 変換用ソース（PDF 等）の置き場 |
-| `JSON_SOURCE_GOMI` | JSON 変換用ソースのゴミ収集日 PDF 名（`gomi.pdf`） |
-| `ICAL_JSONS_DIR` | iCalJSON ディレクトリ（`ical_jsons/`。`sync_calendar` が `*.json` を読む） |
+| `DATA_DIR` | ランタイムデータのルート（`data/`） |
+| `SOURCES_DIR` | PDF 等の変換元ソース（`data/sources/`） |
+| `SOURCE_GOMI_PDF` | ゴミ収集日 PDF 名（`gomi.pdf`） |
+| `ICAL_JSONS_DIR` | iCalJSON ディレクトリ（`data/ical_jsons/`。`sync_calendar` が `*.json` を読む） |
 | `ICAL_JSONS_GOMI` | ゴミ収集日の出力ファイル名（`gomi.json`） |
-| `GOOGLE_TOKEN_PATH` | OAuth トークン（`config/google_token.json`） |
+| `OAUTH_TOKEN_PATH` | OAuth トークン（`data/auth/token.json`） |
 | `GOOGLE_ICAL_ID_KEY` / `GOOGLE_ICAL_SOURCE_KEY` | Calendar API の `extendedProperties.private` キー名 |
 | `TIMEZONE` / `DATETIME_FORMAT` | iCalJSON のタイムゾーン・日時形式 |
 
@@ -90,8 +91,8 @@ flowchart LR
 - **OAuth2（ユーザー）**。個人 Google カレンダーへの書き込みに使う
 - **初回セットアップ**と**トークン失効時の再認可**だけ手動実行する（cron では回さない）
 - 専用のログイン UI は作らない。`google-auth-oauthlib` により **ブラウザで Google 公式の認可画面**を開く
-- トークンファイルの保存先は **`config/google_token.json`**（固定。環境変数にしない）
-- `config/google_token.json` は **Git に含めない**
+- トークンファイルの保存先は **`data/auth/token.json`**（固定。環境変数にしない）
+- `data/auth/token.json` は **Git に含めない**
 
 
 ### 処理の流れ
@@ -100,7 +101,7 @@ flowchart LR
 |----|------|
 | 1. 設定読込 | `check_auth_config()` で必須 env を検証し、`app_config` へ反映 |
 | 2. ブラウザ認可 | ローカル実行時はブラウザを自動で開く。ブラウザが使えない環境では認可 URL を表示し、表示されたコードをターミナルへ入力する |
-| 3. トークン保存 | 取得した refresh_token 等を `config/google_token.json` に書き出す |
+| 3. トークン保存 | 取得した refresh_token 等を `data/auth/token.json` に書き出す |
 
 
 ### 振る舞い
@@ -110,7 +111,7 @@ flowchart LR
 | `0` | 認可成功。トークンファイルを保存した |
 | 非 `0` | 認可失敗または保存失敗 |
 
-- `sync_calendar` は `config/google_token.json` が無い、または読めないとき **非 `0` で終了**し、原因が分かる日本語メッセージを出す（例: `Google トークンがありません。python -m google_ical.commands.auth を実行してください`）
+- `sync_calendar` は `data/auth/token.json` が無い、または読めないとき **非 `0` で終了**し、原因が分かる日本語メッセージを出す（例: `Google トークンがありません。python -m google_ical.commands.auth を実行してください`）
 - 以降の `sync_calendar` / cron 実行では、保存済みトークンを refresh して使う（毎回 `auth` は不要）
 - Linux サーバーへ初回配置するときは、手元で `auth` してできたトークンファイルをサーバーへコピーしてもよい（[docs/deploy.md](docs/deploy.md) に手順を書く）
 
@@ -163,7 +164,7 @@ flowchart LR
 ### ゴミ収集日（`fetch_gomi` の設定）
 
 - 自治体名・PDF URL 上書きは **`.env`** の `GOMI_REGION` / `GOMI_PDF_URL_OVERRIDE`（上記「設定」参照）
-- 出力先は `config.py` の `ICAL_JSONS_DIR` / `ICAL_JSONS_GOMI`（デフォルト: `config/ical_jsons/gomi.json`）
+- 出力先は `config.py` の `ICAL_JSONS_DIR` / `ICAL_JSONS_GOMI`（デフォルト: `data/ical_jsons/gomi.json`）
 
 
 ### マージ規則（`sync_calendar`）
@@ -176,7 +177,7 @@ flowchart LR
 ### JSON テンプレート
 
 - **2026 年 6 月**の 1 ヶ月分の雛形
-- 配置先: `config/ical_jsons/sample.json`、`config/ical_jsons/gomi.json`
+- 配置先: `data/ical_jsons/sample.json`、`data/ical_jsons/gomi.json`
 
 
 
@@ -224,7 +225,7 @@ flowchart LR
 | 項目 | 内容 |
 |------|------|
 | 入力 | 段 2 でダウンロードした PDF |
-| 出力 | `config/ical_jsons/gomi.json` テンプレートと同じ `events[]` 形式 |
+| 出力 | `data/ical_jsons/gomi.json` テンプレートと同じ `events[]` 形式 |
 | 意図 | PDF からその月のゴミ収集日を読み取り、日付ごとのイベントにする |
 | PDF 処理 | 一般的な自治体 PDF を想定。サイズ上限・事前テキスト化の特別扱いはしない |
 | プロンプト | 添付 PDF からゴミ収集日を読み取り、`events[]` 相当の JSON 配列のみ返す。`all_day: true`、`end` は翌日 0:00、読み取れない予定は作らない。正本: `google_ical/content/openai_client.py` の `PDF_TO_EVENTS_PROMPT` |
@@ -239,7 +240,7 @@ flowchart LR
 
 - エントリポイント: `python -m google_ical.commands.sync_calendar`
 - **出力先**: [Google Calendar API](https://developers.google.com/calendar/api/guides/overview)
-- 認証は [`auth`](#google-認証auth) で行う。`sync_calendar` は `config/google_token.json` のトークンを使う
+- 認証は [`auth`](#google-認証auth) で行う。`sync_calendar` は `data/auth/token.json` のトークンを使う
 
 
 ### 同期方針

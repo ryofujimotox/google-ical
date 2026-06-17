@@ -40,7 +40,7 @@ def sync_events_to_google_calendar(events: tuple[MergedEvent, ...]) -> None:
     """
     calendar_id = config.google_calendar_id
     try:
-        service = build_calendar_service(load_calendar_credentials(config.google_token_path))
+        service = build_calendar_service(load_calendar_credentials(config.oauth_token_path))
         existing = list_managed_events(
             service,
             calendar_id=calendar_id,
