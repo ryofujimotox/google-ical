@@ -56,7 +56,7 @@ def _deduplicate_events(events: tuple[CalendarEvent, ...]) -> tuple[CalendarEven
 
 
 def _reject_excessive_coverage(events: tuple[CalendarEvent, ...]) -> None:
-    """月数が上限を超える場合は幻覚とみなして拒否する。"""
+    """月数が上限（暦年・年度 PDF 想定）を超える場合は幻覚とみなして拒否する。"""
     month_count = count_event_months(events)
     if month_count > GOMI_MAX_COVERAGE_MONTHS:
         raise OpenAIClientError(
