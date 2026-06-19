@@ -23,6 +23,7 @@ GOOGLE_ICAL_ID_KEY = "google_ical_id"                            # iCalJSON と 
 GOOGLE_ICAL_SOURCE_KEY = "google_ical_source"                    # 本リポ管理イベントの判別用（google_ical_id とセットで必須）
 TIMEZONE = "Asia/Tokyo"                                          # JST
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S"                            # iCalJSON の日時文字列形式。
+GOMI_MAX_COVERAGE_MONTHS = 12                                    # fetch_gomi が許容する最大月数（暦年・年度 PDF 想定。幻覚対策）
 
 __all__ = [
     "AppConfig",
@@ -35,6 +36,7 @@ __all__ = [
     "ICAL_JSONS_GOMI",
     "GOOGLE_ICAL_ID_KEY",
     "GOOGLE_ICAL_SOURCE_KEY",
+    "GOMI_MAX_COVERAGE_MONTHS",
     "OAUTH_TOKEN_PATH",
     "TIMEZONE",
     "app_config",

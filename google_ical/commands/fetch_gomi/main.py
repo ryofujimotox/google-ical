@@ -5,7 +5,7 @@ from __future__ import annotations
 from google_ical.cli import run_command
 from google_ical.config import app_config as config, check_fetch_gomi_config
 from google_ical.content.events.writer import save_events_file
-from google_ical.content.gomi.normalize import current_jst_target_month
+from google_ical.content.gomi.normalize import count_event_months
 from google_ical.content.gomi.pipeline import convert_gomi_pdf, fetch_gomi_pdf_url
 from google_ical.content.pdf import download_pdf, save_pdf
 from google_ical.pipeline_log import log_info, log_stage_start, log_stage_success
@@ -39,9 +39,11 @@ def main() -> int:
         log_stage_success("PDF 保存", detail=str(config.sources_gomi_pdf))
 
         log_stage_start("PDF→JSON 変換")
-        target_month = current_jst_target_month()
-        events = convert_gomi_pdf(pdf_bytes, target_month=target_month)
-        log_stage_success("PDF→JSON 変換", detail=f"events={len(events)} month={target_month}")
+        events = convert_gomi_pdf(pdf_bytes)
+        log_stage_success(
+            "PDF→JSON 変換",
+            detail=f"events={len(events)} months={count_event_months(events)}",
+        )
 
         log_stage_start("JSON 保存", detail=output_path)
         save_events_file(
