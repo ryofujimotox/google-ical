@@ -26,20 +26,15 @@ def fetch_gomi_pdf_url() -> str:
     )
 
 
-def convert_gomi_pdf(
-    pdf_bytes: bytes,
-    *,
-    target_month: str,
-) -> tuple[CalendarEvent, ...]:
+def convert_gomi_pdf(pdf_bytes: bytes) -> tuple[CalendarEvent, ...]:
     """PDF をゴミ収集日イベント列へ変換する（ChatGPT 経由）。
-    例: pdf_bytes, target_month="2026-06" → (CalendarEvent("可燃ごみ", ...), ...)
+    例: pdf_bytes → (CalendarEvent("可燃ごみ", ...), ...)
     """
     return _call_openai(
         lambda: convert_pdf_to_events(
             pdf_bytes=pdf_bytes,
             api_key=config.openai_api_key,
             model=config.openai_model,
-            target_month=target_month,
         ),
     )
 

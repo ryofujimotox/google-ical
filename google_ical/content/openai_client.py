@@ -13,21 +13,18 @@ from google_ical.exceptions import OpenAIClientError
 _URL_ONLY_RE = re.compile(r"^https?://[^\s<>'\"{}|\\^`]+$", re.IGNORECASE)
 
 PDF_URL_PROMPT = """\
-自治体公式サイトから、次の地域のゴミ収集日カレンダーPDF URLを1つ特定してください。
+次の地域のゴミ収集日カレンダーPDF のURLを特定してください。
 
 地域: {region}
 
 条件:
-- 自治体の公式ドメインを最優先する
-- PDFファイルそのもののURLを返す
+- 必ずウェブ検索を行い、調査日時点で公開されている最新のカレンダーPDFを探す
+- 検索結果に載っているPDF URLを一字一句そのまま返す（ファイル名を推測・省略・置換しない）
 - 返答はURL文字列だけにする
-- 説明、Markdown、引用、JSON、余分な空白は出力しない
 """
 
 PDF_TO_EVENTS_PROMPT = """\
 添付PDFからゴミ収集日を読み取り、iCalJSON の events 配列だけを JSON で返してください。
-
-対象月: {target_month}（JST）
 
 出力形式:
 [
@@ -35,6 +32,12 @@ PDF_TO_EVENTS_PROMPT = """\
     "summary": "可燃ごみ",
     "start": "2026-06-01T00:00:00",
     "end": "2026-06-02T00:00:00",
+    "all_day": true
+  }},
+  {{
+    "summary": "可燃ごみ",
+    "start": "2026-07-03T00:00:00",
+    "end": "2026-07-04T00:00:00",
     "all_day": true
   }}
 ]
@@ -44,8 +47,9 @@ PDF_TO_EVENTS_PROMPT = """\
 - description は必要な場合だけ短く入れる
 - start/end は YYYY-MM-DDTHH:MM:SS のJSTとして扱う
 - ゴミ収集日は all_day: true とし、end は翌日 00:00:00 にする
-- 対象月（{target_month}）の収集日だけを返す。他の月は含めない
-- 対象月に読み取れる収集日が無い場合は空配列 [] を返す
+- PDF に載っているすべての月の収集日を返す（通常は約半年分）
+- PDF に載っていない月の予定は作らない
+- 読み取れる収集日が無い場合は空配列 [] を返す
 - 読み取れない予定は作らない
 """
 
@@ -80,10 +84,9 @@ def convert_pdf_to_events(
     pdf_bytes: bytes,
     api_key: str,
     model: str,
-    target_month: str,
 ) -> tuple[CalendarEvent, ...]:
-    """PDF を ChatGPT で読み取り、対象月の CalendarEvent 列へ正規化する。
-    例: pdf_bytes, target_month="2026-06" → (CalendarEvent("可燃ごみ", ...), ...)
+    """PDF を ChatGPT で読み取り、CalendarEvent 列へ正規化する。
+    例: pdf_bytes → (CalendarEvent("可燃ごみ", ...), ...)
     """
     if not pdf_bytes:
         raise OpenAIClientError("PDF が空です")
@@ -102,7 +105,7 @@ def convert_pdf_to_events(
                 {
                     "role": "user",
                     "content": [
-                        {"type": "input_text", "text": PDF_TO_EVENTS_PROMPT.format(target_month=target_month)},
+                        {"type": "input_text", "text": PDF_TO_EVENTS_PROMPT},
                         {"type": "input_file", "file_id": uploaded_id},
                     ],
                 },
@@ -114,10 +117,7 @@ def convert_pdf_to_events(
         if uploaded_id:
             _delete_uploaded_file(client, uploaded_id)
 
-    return normalize_gomi_events(
-        _extract_output_text(response),
-        target_month=target_month,
-    )
+    return normalize_gomi_events(_extract_output_text(response))
 
 
 def _create_openai_client(api_key: str) -> object:

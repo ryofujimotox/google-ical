@@ -3,40 +3,21 @@
 from __future__ import annotations
 
 import json
-import re
-from datetime import datetime
 from typing import Any
-from zoneinfo import ZoneInfo
 
 from pydantic import ValidationError
 
-from google_ical.config import TIMEZONE
+from google_ical.config import GOMI_MAX_COVERAGE_MONTHS
 from google_ical.content.events.datetime_parse import parse_strict_jst_datetime
 from google_ical.content.events.models import CalendarEvent
 from google_ical.content.events.schemas import EventRecordSchema
 from google_ical.exceptions import OpenAIClientError
 
-_TARGET_MONTH_RE = re.compile(r"^\d{4}-\d{2}$")
 
-
-def current_jst_target_month() -> str:
-    """月次バッチの対象月を返す（JST の YYYY-MM）。
-    例: 2026年6月実行 → "2026-06"
-    """
-    return datetime.now(ZoneInfo(TIMEZONE)).strftime("%Y-%m")
-
-
-def normalize_gomi_events(
-    output_text: str,
-    *,
-    target_month: str | None = None,
-) -> tuple[CalendarEvent, ...]:
+def normalize_gomi_events(output_text: str) -> tuple[CalendarEvent, ...]:
     """ChatGPT 返却 JSON を検証し、CalendarEvent 列へ正規化する。
     例: '[{"summary":"可燃ごみ","start":"2026-06-03T00:00:00",...}]' → (CalendarEvent(...),)
     """
-    if target_month is not None:
-        _validate_target_month(target_month)
-
     raw = _loads_json_only(output_text)
     if isinstance(raw, dict):
         raw = raw.get("events")
@@ -48,9 +29,15 @@ def normalize_gomi_events(
     events = tuple(_normalize_event(item) for item in raw)
     sorted_events = tuple(sorted(events, key=lambda event: (event.start, event.end, event.summary)))
     deduplicated = _deduplicate_events(sorted_events)
-    if target_month is None:
-        return deduplicated
-    return _filter_events_for_target_month(deduplicated, target_month)
+    _reject_excessive_coverage(deduplicated)
+    return deduplicated
+
+
+def count_event_months(events: tuple[CalendarEvent, ...]) -> int:
+    """イベント列に含まれる distinct な月数を返す。
+    例: 6月・7月の予定 → 2
+    """
+    return len({_event_start_month(event) for event in events})
 
 
 def _deduplicate_events(events: tuple[CalendarEvent, ...]) -> tuple[CalendarEvent, ...]:
@@ -68,20 +55,13 @@ def _deduplicate_events(events: tuple[CalendarEvent, ...]) -> tuple[CalendarEven
     return tuple(unique)
 
 
-def _validate_target_month(target_month: str) -> None:
-    """target_month が YYYY-MM 形式か検証する。"""
-    if not _TARGET_MONTH_RE.fullmatch(target_month):
-        raise OpenAIClientError(f"target_month の形式が不正です: {target_month!r}")
-
-
-def _filter_events_for_target_month(
-    events: tuple[CalendarEvent, ...],
-    target_month: str,
-) -> tuple[CalendarEvent, ...]:
-    """対象月のイベントだけ残す。
-    例: target_month="2026-06" → start が 6 月のものだけ
-    """
-    return tuple(event for event in events if _event_start_month(event) == target_month)
+def _reject_excessive_coverage(events: tuple[CalendarEvent, ...]) -> None:
+    """月数が上限を超える場合は幻覚とみなして拒否する。"""
+    month_count = count_event_months(events)
+    if month_count > GOMI_MAX_COVERAGE_MONTHS:
+        raise OpenAIClientError(
+            f"収集日の月数が上限を超えています: months={month_count} max={GOMI_MAX_COVERAGE_MONTHS}",
+        )
 
 
 def _event_start_month(event: CalendarEvent) -> str:

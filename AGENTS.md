@@ -176,7 +176,7 @@ flowchart LR
 
 ### JSON テンプレート
 
-- **2026 年 6 月**の 1 ヶ月分の雛形
+- **2026 年 6 月**の 1 ヶ月分の雛形（手動定義用）。`fetch_gomi` の出力は PDF に載る全月（通常は約半年分）になり得る
 - 配置先: `data/ical_jsons/sample.json`、`data/ical_jsons/gomi.json`
 
 
@@ -226,9 +226,9 @@ flowchart LR
 |------|------|
 | 入力 | 段 2 でダウンロードした PDF |
 | 出力 | `data/ical_jsons/gomi.json` テンプレートと同じ `events[]` 形式 |
-| 意図 | PDF からその月のゴミ収集日を読み取り、日付ごとのイベントにする |
+| 意図 | PDF に載っている全月（通常は約半年分）のゴミ収集日を読み取り、日付ごとのイベントにする |
 | PDF 処理 | 一般的な自治体 PDF を想定。サイズ上限・事前テキスト化の特別扱いはしない |
-| プロンプト | 添付 PDF からゴミ収集日を読み取り、`events[]` 相当の JSON 配列のみ返す。`all_day: true`、`end` は翌日 0:00、読み取れない予定は作らない。正本: `google_ical/content/openai_client.py` の `PDF_TO_EVENTS_PROMPT` |
+| プロンプト | 添付 PDF からゴミ収集日を読み取り、PDF に載る全月分の `events[]` 相当 JSON 配列のみ返す。`all_day: true`、`end` は翌日 0:00、読み取れない予定は作らない。正本: `google_ical/content/openai_client.py` の `PDF_TO_EVENTS_PROMPT` |
 
 - **中間スキーマは設けない**。ChatGPT の返却をそのまま iCalJSON に近い形で受け取る
 - `summary` は **単純な文字列**（例: `可燃ごみ`、`不燃ごみ`）。種別の固定一覧は設けない
@@ -317,7 +317,7 @@ flowchart LR
 ## cron・実行頻度
 
 - 単発バッチとする
-- **頻度**: **月 1 回**（ゴミ収集日 PDF の取得・カレンダー更新が目的）
+- **頻度**: **月 1 回**（ゴミ収集日 PDF の取得・カレンダー更新が目的。1 回の `fetch_gomi` で PDF 内の約半年分を更新する）
 - **実行順**: `fetch_gomi` → `sync_calendar`（同一 cron 内で連続）
 - **実行時刻**: [docs/deploy.md](docs/deploy.md) で定義する（本書では具体時刻を書かない）
 
