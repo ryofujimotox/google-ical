@@ -13,44 +13,16 @@ from google_ical.exceptions import OpenAIClientError
 _URL_ONLY_RE = re.compile(r"^https?://[^\s<>'\"{}|\\^`]+$", re.IGNORECASE)
 
 PDF_URL_PROMPT = """\
-次の地域のゴミ収集日カレンダーPDF のURLを特定してください。
-
-地域: {region}
-
-条件:
-- 必ずウェブ検索を行い、調査日時点で公開されている最新のカレンダーPDFを探す
-- 検索結果に載っているPDF URLを一字一句そのまま返す（ファイル名を推測・省略・置換しない）
-- 返答はURL文字列だけにする
+Region: {region}
+Find the latest official garbage-collection calendar PDF (web search required).
+Prefer the municipality's official domain. Return the exact PDF URL only—no other text.
 """
 
 PDF_TO_EVENTS_PROMPT = """\
-添付PDFからゴミ収集日を読み取り、iCalJSON の events 配列だけを JSON で返してください。
-
-出力形式:
-[
-  {{
-    "summary": "可燃ごみ",
-    "start": "2026-06-01T00:00:00",
-    "end": "2026-06-02T00:00:00",
-    "all_day": true
-  }},
-  {{
-    "summary": "可燃ごみ",
-    "start": "2026-07-03T00:00:00",
-    "end": "2026-07-04T00:00:00",
-    "all_day": true
-  }}
-]
-
-条件:
-- 返答はJSON配列だけにする
-- description は必要な場合だけ短く入れる
-- start/end は YYYY-MM-DDTHH:MM:SS のJSTとして扱う
-- ゴミ収集日は all_day: true とし、end は翌日 00:00:00 にする
-- PDF に載っているすべての月の収集日を返す（通常は約半年分）
-- PDF に載っていない月の予定は作らない
-- 読み取れる収集日が無い場合は空配列 [] を返す
-- 読み取れない予定は作らない
+Extract all garbage collection dates from the PDF (all months shown, ~6 months typical).
+Return a JSON array only:
+[{{"summary":"可燃ごみ","start":"2026-06-01T00:00:00","end":"2026-06-02T00:00:00","all_day":true}}]
+Rules: JST YYYY-MM-DDTHH:MM:SS; all_day with end at next-day 00:00:00; PDF dates only; skip unreadable; [] if none.
 """
 
 
