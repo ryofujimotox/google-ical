@@ -21,7 +21,7 @@ Prefer the municipality's official domain. Return the exact PDF URL only—no ot
 PDF_TO_EVENTS_PROMPT = """\
 Extract all garbage collection dates from the PDF (all months shown, ~6 months typical).
 Return a JSON array only:
-[{{"summary":"可燃ごみ","start":"2026-06-01T00:00:00","end":"2026-06-02T00:00:00","all_day":true}}]
+[{"summary":"可燃ごみ","start":"2026-06-01T00:00:00","end":"2026-06-02T00:00:00","all_day":true}]
 Rules: JST YYYY-MM-DDTHH:MM:SS; all_day with end at next-day 00:00:00; PDF dates only; skip unreadable; [] if none.
 """
 
