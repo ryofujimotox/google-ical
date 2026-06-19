@@ -67,7 +67,7 @@ flowchart LR
 | `GOMI_PDF_URL_OVERRIDE` | 任意 | `fetch_gomi` | 指定時は URL 探索をスキップし、この PDF URL から取得 |
 | `GOMI_REGION` | `fetch_gomi`（`GOMI_PDF_URL_OVERRIDE` 未指定時のみ） | 同上 | 自治体名 1 件（例: `東京都〇〇区`）。PDF URL 探索に渡す |
 | `OPENAI_API_KEY` | `fetch_gomi` | 同上 | OpenAI API キー |
-| `OPENAI_MODEL` | `fetch_gomi` | 同上 | ChatGPT モデル名（`.env.example` は `gpt-4.1-mini`） |
+| `OPENAI_MODEL` | `fetch_gomi` | 同上 | ChatGPT モデル名（`.env.example` は `gpt-5.5`） |
 
 
 ### `config.py` の固定値（変更時はソースを編集）
@@ -202,10 +202,10 @@ flowchart LR
 
 ### ChatGPT の仕事
 
-- モデル: `gpt-4.1-mini`（`OPENAI_MODEL` で上書き可）
+- モデル: `gpt-5.5`（`OPENAI_MODEL` で上書き可）
 - リトライ: **しない**（失敗時は非 `0` で終了）
 - URL 調査: OpenAI Responses API + `web_search`。返却は URL 文字列のみ。
-- PDF→JSON: OpenAI Responses API + `input_file`（`gpt-4.1-mini`）。出力は `gomi.json` 形式の `events[]`。
+- PDF→JSON: OpenAI Responses API + `input_file`（`gpt-5.5`）。出力は `gomi.json` 形式の `events[]`。
 
 
 #### 1. ゴミ収集日 PDF URL の調査
