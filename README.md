@@ -10,6 +10,10 @@
 
 近所の **ゴミ収集日 PDF** を自動取得して **iCalJSON** にし、反映する機能も含む。
 
+![fetch_gomi: コマンド実行 → PDF 自動取得 → JSON 自動変換](./docs/images/fetch_gomi.png)
+
+![sync_calendar: 事前準備 → コマンド実行 → カレンダーに反映](./docs/images/sync_calendar.png)
+
 
 
 ## 概要
